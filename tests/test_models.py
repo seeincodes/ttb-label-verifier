@@ -289,3 +289,57 @@ class TestLabelData:
         data = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
         again = LabelData.model_validate_json(data.model_dump_json())
         assert again == data
+
+
+class TestVerdict:
+    """Severity ordering per presearch §5.4: ERROR > FAIL > WARN > PASS.
+    Overall verdict is the worst across all checked field verdicts."""
+
+    def test_four_string_values(self):
+        from app.models import Verdict
+
+        assert Verdict.PASS.value == "pass"
+        assert Verdict.WARN.value == "warn"
+        assert Verdict.FAIL.value == "fail"
+        assert Verdict.ERROR.value == "error"
+
+    def test_severity_ordering(self):
+        from app.models import Verdict
+
+        assert Verdict.PASS.severity < Verdict.WARN.severity
+        assert Verdict.WARN.severity < Verdict.FAIL.severity
+        assert Verdict.FAIL.severity < Verdict.ERROR.severity
+
+    def test_worst_of_picks_highest_severity(self):
+        """The verifier aggregates per-field verdicts by `worst_of`. ERROR on
+        any required field must dominate any number of PASS / WARN / FAIL."""
+        from app.models import Verdict
+
+        assert Verdict.worst_of([Verdict.PASS]) is Verdict.PASS
+        assert Verdict.worst_of([Verdict.PASS, Verdict.PASS]) is Verdict.PASS
+        assert Verdict.worst_of([Verdict.PASS, Verdict.WARN]) is Verdict.WARN
+        assert (
+            Verdict.worst_of([Verdict.WARN, Verdict.FAIL, Verdict.WARN])
+            is Verdict.FAIL
+        )
+        assert (
+            Verdict.worst_of(
+                [Verdict.PASS, Verdict.FAIL, Verdict.ERROR, Verdict.WARN]
+            )
+            is Verdict.ERROR
+        )
+
+    def test_worst_of_empty_raises(self):
+        """An empty verdict list means the verifier ran zero rules — that's
+        a logic bug (every label has at least the warning rule), not a PASS."""
+        from app.models import Verdict
+
+        with pytest.raises(ValueError):
+            Verdict.worst_of([])
+
+    def test_is_str_subclass_for_json(self):
+        """Verdict serialises to a plain lowercase string in API responses."""
+        from app.models import Verdict
+
+        assert isinstance(Verdict.FAIL, str)
+        assert Verdict("error") is Verdict.ERROR

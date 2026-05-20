@@ -13,7 +13,7 @@ Layered per presearch §5.2 / §5.4 / §5.5:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Generic, Literal, Optional, TypeVar
+from typing import Generic, Iterable, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -123,3 +123,47 @@ class LabelData(BaseModel):
     country_of_origin: ExtractedField[str]
     government_warning_text: ExtractedField[str]
     government_warning_formatting: WarningFormatting
+
+
+# Severity rank for `Verdict.worst_of`. Higher = worse. Kept as a module-level
+# table rather than baked into the enum value so the wire format stays as a
+# plain lowercase string (no IntEnum / tuple-value surprises in JSON).
+_VERDICT_SEVERITY = {
+    "pass":  0,
+    "warn":  1,
+    "fail":  2,
+    "error": 3,
+}
+
+
+class Verdict(str, Enum):
+    """Per-field and overall verdict (presearch §5.4).
+
+    Severity: PASS < WARN < FAIL < ERROR. Overall verdict for a label =
+    `Verdict.worst_of(field_verdicts)` — ERROR on a required field
+    dominates any number of PASS / WARN / FAIL, which is the contract the
+    MVP9 confidence gate relies on to avoid false PASS / FAIL when the
+    image is unreadable.
+    """
+
+    PASS = "pass"
+    WARN = "warn"
+    FAIL = "fail"
+    ERROR = "error"
+
+    @property
+    def severity(self) -> int:
+        return _VERDICT_SEVERITY[self.value]
+
+    @classmethod
+    def worst_of(cls, verdicts: Iterable["Verdict"]) -> "Verdict":
+        """Return the highest-severity verdict in `verdicts`.
+
+        Raises ValueError if empty — a verifier run that produced zero
+        field verdicts is a logic bug (the government-warning rule applies
+        to every beverage type per §5.6), not a silent PASS.
+        """
+        materialised = list(verdicts)
+        if not materialised:
+            raise ValueError("worst_of() requires at least one verdict")
+        return max(materialised, key=lambda v: v.severity)
