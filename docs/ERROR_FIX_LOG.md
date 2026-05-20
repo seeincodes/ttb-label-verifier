@@ -51,6 +51,22 @@ Suggested category prefixes for this project:
 
 ## Log
 
+### 2026-05-19 — [GEMINI] `google-genai` SDK enforces a 10s minimum deadline
+
+- **Error:** `google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {... 'message': 'Manually set deadline 8s is too short. Minimum allowed deadline is 10s.'}}`
+- **Context:** `python scripts/smoke_gemini.py` after swapping from the deprecated `google-generativeai` SDK to the maintained `google-genai` SDK. The `HttpOptions(timeout=settings.extraction_timeout_seconds * 1000)` was passing 8000 ms, below the new SDK's 10s floor.
+- **Root cause:** The new SDK enforces a minimum vendor-side request deadline of 10 seconds (returned as a 400 INVALID_ARGUMENT before the request leaves the SDK). The old `google-generativeai` SDK had no such floor, which is why our original `EXTRACTION_TIMEOUT_SECONDS=8` worked.
+- **Fix:** Bumped `EXTRACTION_TIMEOUT_SECONDS` default from 8 → 12 across `.env`, `.env.example`, `app/config.py` (also tightened lower bound `ge=10`), `render.yaml`, and the references in `docs/TECH_STACK.md`, `docs/USER_FLOW.md`, `docs/MEMO.md`. 12 s comfortably clears the 10 s floor while still letting a stuck call trigger fallback rather than hanging indefinitely.
+- **Prevention:** `Field(ge=10)` in `app/config.py` now refuses to load a Settings instance with a sub-10 s timeout, surfacing the constraint at boot rather than on the first API call.
+
+### 2026-05-19 — [GEMINI] `google-generativeai` SDK is end-of-life (deprecation warning)
+
+- **Error:** Smoke test prints `FutureWarning: All support for the google.generativeai package has ended. It will no longer be receiving updates or bug fixes.`
+- **Context:** Initial smoke test of `scripts/smoke_gemini.py` against `google-generativeai==0.8.x`. The test succeeded (1.6 s latency, valid JSON) but the SDK is deprecated.
+- **Root cause:** Google renamed and re-architected the Python SDK; the legacy package is frozen.
+- **Fix:** Replaced `google-generativeai` with `google-genai` in `requirements.txt`. Rewrote `scripts/smoke_gemini.py` against the new `Client` API (`genai.Client(api_key=...)` + `client.models.generate_content(...)` + `types.Part.from_bytes(...)`). Updated docs/TECH_STACK.md, docs/CLAUDE.md, and the dep tables that referenced the old package name.
+- **Prevention:** Going forward, all Gemini code uses `from google import genai` and `from google.genai import types`. The extractor implementation in task group 3 will be built on the new SDK, avoiding a second rewrite.
+
 ### 2026-05-19 — [OPENAI] Smoke test fails with 429 `insufficient_quota`
 
 - **Error:** `openai.RateLimitError: Error code: 429 - {'error': {'message': 'You exceeded your current quota...', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}}`

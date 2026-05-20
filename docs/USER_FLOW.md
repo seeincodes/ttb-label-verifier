@@ -27,7 +27,7 @@
 │     - Compute sha256(image_bytes)                                │
 │     - Cache hit? Return cached LabelData (~1 ms)                 │
 │     - Otherwise: call Gemini extractor (~1.5 s typical;          │
-│       5–8 s worst case before timeout → OpenAI fallback)         │
+│       up to 12 s before timeout → OpenAI fallback)               │
 │     - Run deterministic verifier (~10–50 ms)                     │
 │     - Render _result_panel.html fragment                         │
 └────────────────────────┬─────────────────────────────────────────┘

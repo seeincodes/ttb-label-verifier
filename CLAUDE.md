@@ -46,7 +46,7 @@ The technology decisions below are locked from the presearch. Do not switch any 
 | Frontend interactivity | HTMX (CDN) | React, Vue, Svelte, Next.js, any SPA framework |
 | Styling | Tailwind CSS via Play CDN | Bootstrap, MUI, a separate CSS build pipeline at prototype stage |
 | Client-side state | Alpine.js (CDN, ~30 lines total use) | jQuery, vanilla DOM event spaghetti, a state-management library |
-| Vision (primary) | Google Gemini 2.5 Flash via `google-generativeai` | Claude vision (latency), Bedrock (until prod path); also do NOT route through LiteLLM |
+| Vision (primary) | Google Gemini 2.5 Flash via `google-genai` | Claude vision (latency), Bedrock (until prod path); also do NOT route through LiteLLM |
 | Vision (fallback) | OpenAI GPT-4o via `openai` | A generic LLM gateway library |
 | Extractor abstraction | Custom `LabelExtractor` ABC (`app/extractors/base.py`) | LiteLLM, LangChain LLM wrappers, instructor adapters — the writeup specifically calls out the rolled abstraction |
 | Fuzzy matching | `rapidfuzz` (`token_sort_ratio`) | `fuzzywuzzy` (slow), `difflib` (less accurate at scale) |

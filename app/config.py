@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr = Field(default=SecretStr(""))
     openai_model: str = Field(default="gpt-4o")
 
-    extraction_timeout_seconds: int = Field(default=8, ge=1, le=60)
+    extraction_timeout_seconds: int = Field(default=12, ge=10, le=60)
     batch_concurrency: int = Field(default=5, ge=1, le=20)
     cache_maxsize: int = Field(default=128, ge=1)
 

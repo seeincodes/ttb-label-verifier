@@ -14,7 +14,7 @@ pydantic>=2.7,<3.0
 pydantic-settings>=2.4,<3.0
 
 # Vision model SDKs
-google-generativeai>=0.8
+google-genai>=0.8
 openai>=1.40
 
 # HTTP client + fuzzy matching + caching

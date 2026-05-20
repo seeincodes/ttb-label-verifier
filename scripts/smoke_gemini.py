@@ -2,7 +2,7 @@
 
 Verifies that:
   1. GEMINI_API_KEY is loadable from .env
-  2. google-generativeai can call the configured model
+  2. google-genai can call the configured model
   3. The response parses as text
 
 Usage: `make smoke-gemini` (or `python scripts/smoke_gemini.py`)
@@ -17,14 +17,15 @@ import sys
 import time
 from pathlib import Path
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # Allow `python scripts/smoke_gemini.py` from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings  # noqa: E402
 
-# 32x32 white PNG (generated once, hex-encoded for portability).
+# 32x32 white PNG (generated once, base64-encoded for portability).
 SYNTHETIC_PNG_B64 = (
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQMAAABJtOi3AAAABlBMVEX///8AAA"
     "BVwtN+AAAAEElEQVR4nGNgGAWjYBSMAggAAQEAAAGYG3SXAAAAAElFTkSuQmCC"
@@ -54,8 +55,10 @@ def main() -> int:
     print(f"Model: {settings.gemini_model}")
     print(f"Timeout: {settings.extraction_timeout_seconds}s")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(settings.gemini_model)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=settings.extraction_timeout_seconds * 1000),
+    )
 
     prompt = (
         "You are a smoke test. Respond with valid JSON only, no markdown. "
@@ -63,18 +66,22 @@ def main() -> int:
     )
 
     started = time.perf_counter()
-    response = model.generate_content(
-        [{"mime_type": mime_type, "data": image_bytes}, prompt],
-        request_options={"timeout": settings.extraction_timeout_seconds},
+    response = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            prompt,
+        ],
+        config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
     elapsed_ms = (time.perf_counter() - started) * 1000
 
-    raw = response.text
+    raw = response.text or ""
     print(f"\nLatency: {elapsed_ms:.0f}ms")
     print(f"Raw response: {raw!r}")
 
     try:
-        parsed = json.loads(raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip())
+        parsed = json.loads(raw)
         print(f"Parsed JSON: {json.dumps(parsed, indent=2)}")
         print("\nOK — Gemini extractor is reachable and returned JSON.")
         return 0

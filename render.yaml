@@ -30,7 +30,7 @@ services:
       - key: OPENAI_MODEL
         value: gpt-4o
       - key: EXTRACTION_TIMEOUT_SECONDS
-        value: 8
+        value: 12
       - key: BATCH_CONCURRENCY
         value: 5
       - key: CACHE_MAXSIZE
