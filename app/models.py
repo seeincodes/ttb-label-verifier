@@ -13,9 +13,13 @@ Layered per presearch §5.2 / §5.4 / §5.5:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
+
+T = TypeVar("T")
+
+Confidence = Literal["high", "medium", "low"]
 
 
 class BeverageType(str, Enum):
@@ -67,3 +71,19 @@ class ApplicationData(BaseModel):
                 "(domestic labels cannot declare a foreign country of origin)"
             )
         return self
+
+
+class ExtractedField(BaseModel, Generic[T]):
+    """One field returned by the vision model, with per-field confidence.
+
+    Shape per presearch §5.5: `{"value": <T or null>, "confidence": "high|medium|low"}`.
+
+    Per-field confidence is the input to the MVP9 confidence gate — any
+    *required* field at low confidence becomes a verdict of ERROR rather
+    than risking a false PASS / FAIL. The prompt instructs the model to
+    return `value=null` + `confidence="low"` rather than guess, so the
+    `Optional[T]` is load-bearing, not cosmetic.
+    """
+
+    value: Optional[T] = None
+    confidence: Confidence

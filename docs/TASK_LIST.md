@@ -20,7 +20,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 - [x] `app/models.py` with `BeverageType` enum (`distilled_spirits`, `wine`, `malt_beverage`, `other`).
 - [x] `ApplicationData` model per presearch §5.2 (with conditional `class_type`, `alcohol_content_pct`, `country_of_origin`).
-- [ ] `ExtractedField` generic with `value` + `confidence: Literal["high", "medium", "low"]`.
+- [x] `ExtractedField` generic with `value` + `confidence: Literal["high", "medium", "low"]`.
 - [ ] `LabelData` with one `ExtractedField` per checklist field plus the 3-part `government_warning_formatting` block.
 - [ ] `Verdict` enum (`PASS | WARN | FAIL | ERROR`) with severity ordering.
 - [ ] `FieldVerdict`: verdict, reason, `cfr_citation`, `comparison_method`, `evidence`.

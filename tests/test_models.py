@@ -121,3 +121,55 @@ class TestApplicationData:
             bottler_address="42 Vine St",
         )
         assert app.beverage_type.value == "wine"
+
+
+class TestExtractedField:
+    """Generic wrapper for vision-model output, per presearch §5.5.
+
+    Shape: {"value": <T or null>, "confidence": "high|medium|low"}.
+    Per-field confidence is the input to the verifier's confidence gate
+    (MVP9): any *required* field at low confidence becomes ERROR."""
+
+    def test_high_confidence_string_value(self):
+        from app.models import ExtractedField
+
+        f = ExtractedField[str](value="OLD TOM DISTILLERY", confidence="high")
+        assert f.value == "OLD TOM DISTILLERY"
+        assert f.confidence == "high"
+
+    def test_float_parametrisation(self):
+        from app.models import ExtractedField
+
+        f = ExtractedField[float](value=45.0, confidence="high")
+        assert f.value == pytest.approx(45.0)
+
+    def test_null_value_with_low_confidence_allowed(self):
+        """The prompt explicitly tells the model to return value=null +
+        confidence=low rather than guess — verifier needs this path open."""
+        from app.models import ExtractedField
+
+        f = ExtractedField[str](value=None, confidence="low")
+        assert f.value is None
+        assert f.confidence == "low"
+
+    def test_invalid_confidence_rejected(self):
+        from pydantic import ValidationError
+
+        from app.models import ExtractedField
+
+        with pytest.raises(ValidationError):
+            ExtractedField[str](value="x", confidence="HIGH")  # case-sensitive
+        with pytest.raises(ValidationError):
+            ExtractedField[str](value="x", confidence="medium-ish")
+
+    def test_round_trip_through_json(self):
+        """The verifier reads this JSON directly off the vision model's
+        response, so the field-by-field round-trip must be lossless."""
+        from app.models import ExtractedField
+
+        original = ExtractedField[str](value="bourbon", confidence="medium")
+        parsed = ExtractedField[str].model_validate_json(
+            original.model_dump_json()
+        )
+        assert parsed.value == "bourbon"
+        assert parsed.confidence == "medium"
