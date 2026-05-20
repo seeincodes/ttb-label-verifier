@@ -6,7 +6,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 1. Project setup [MVP14]
 
-- [ ] Create the repo layout from presearch §3.4 (`app/`, `tests/`, `eval/`, `sample_data/`).
+- [x] Create the repo layout from presearch §3.4 (`app/`, `tests/`, `eval/`, `sample_data/`).
 - [ ] `pyproject.toml` and `requirements.txt` with FastAPI, uvicorn[standard], jinja2, python-multipart, pydantic, pydantic-settings, rapidfuzz, cachetools, httpx, google-generativeai, openai, pytest.
 - [ ] `app/config.py` — `Settings` class via `pydantic-settings` reading from `.env`.
 - [ ] `.env.example` mirroring `.env` (no secret values).
