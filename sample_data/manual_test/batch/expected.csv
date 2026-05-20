@@ -1,0 +1,9 @@
+filename,beverage_type,brand_name,class_type,alcohol_content_pct,net_contents,bottler_name,bottler_address,is_import,country_of_origin
+01_fox_hollow_bourbon.png,distilled_spirits,Fox Hollow,Kentucky Straight Bourbon Whiskey,45.0,750 mL,Fox Hollow Distillery LLC,"47 Cooperage Ln, Bardstown, KY 40004",false,
+02_emerald_isle_gin.png,distilled_spirits,Emerald Isle,London Dry Gin,40.0,750 mL,Emerald Isle Distillers Ltd,"201 Juniper Way, Portland, OR 97214",false,
+03_crescent_bay_tequila.png,distilled_spirits,Crescent Bay,Silver Tequila,38.0,750 mL,Crescent Bay Spirits Co,"88 Coastal Hwy, San Diego, CA 92103",true,Mexico
+04_windward_rum_abv_fail.png,distilled_spirits,Windward,Aged Caribbean Rum,45.0,750 mL,Windward Trading Co,"14 Harbor Pl, Miami, FL 33132",true,Jamaica
+05_valley_springs_cab.png,wine,Valley Springs,Napa Valley Cabernet Sauvignon,12.5,750 mL,Valley Springs Winery,"3120 Vine Trail, St. Helena, CA 94574",false,
+06_old_harbor_zin_wine_band.png,wine,Old Harbor,California Zinfandel,14.0,750 mL,Old Harbor Vineyards,"900 Estate Rd, Paso Robles, CA 93446",false,
+07_northern_peak_ipa.png,malt_beverage,Northern Peak,India Pale Ale,6.5,355 mL,Northern Peak Brewing,"412 Summit St, Burlington, VT 05401",false,
+08_rustic_field_stout_warning_fail.png,malt_beverage,Rustic Field,Stout,5.5,355 mL,Rustic Field Brewery,"75 Mill Rd, Asheville, NC 28801",false,

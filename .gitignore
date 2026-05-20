@@ -33,6 +33,9 @@ ENV/
 *.swp
 .DS_Store
 
+# Claude Code agent state (worktrees, transcripts) — local-only
+.claude/
+
 # Test / coverage
 .pytest_cache/
 .coverage
