@@ -13,9 +13,21 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from fastapi.templating import Jinja2Templates
 
+from app.batch import (
+    BatchStore,
+    get_batch_store,
+    parse_expected_csv,
+    results_to_csv,
+    run_batch,
+)
 from app.cache import LabelDataCache, get_cache
 from app.config import get_settings
 from app.dependencies import get_extractor
@@ -410,5 +422,132 @@ async def sample(request: Request, name: str) -> HTMLResponse:
             "extracted_display": _extracted_display(label_data),
             "expected_display": _expected_display(app_data),
             "raw_extraction_json": label_data.model_dump_json(indent=2),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# /batch — multi-label upload, SSE-streamed results
+# ---------------------------------------------------------------------------
+
+
+@app.get("/batch", response_class=HTMLResponse)
+async def batch_page(request: Request) -> HTMLResponse:
+    settings = get_settings()
+    return templates.TemplateResponse(
+        request=request,
+        name="batch.html",
+        context={"batch_concurrency": settings.batch_concurrency},
+    )
+
+
+@app.post("/batch", response_class=JSONResponse)
+async def batch_create(
+    files: list[UploadFile] = File(...),
+    expected_csv: str = Form(""),
+    store: BatchStore = Depends(get_batch_store),
+) -> JSONResponse:
+    """Accept N image files + optional CSV; register a BatchRun and
+    return its run_id. The actual extraction starts on the first
+    GET /batch/stream/{run_id} request — keeps the POST snappy and
+    avoids dropped work if the client never opens the stream."""
+    if not files:
+        raise HTTPException(status_code=400, detail="at least one file required")
+
+    items = []
+    for upload in files:
+        data = await upload.read()
+        if len(data) == 0:
+            continue
+        if len(data) > _MAX_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"{upload.filename}: image exceeds "
+                    f"{_MAX_IMAGE_BYTES // (1024*1024)} MB limit"
+                ),
+            )
+        items.append((upload.filename or "file", data, _mime_from_upload(upload)))
+
+    if not items:
+        raise HTTPException(status_code=400, detail="all uploaded files were empty")
+
+    expected = parse_expected_csv(expected_csv) if expected_csv else {}
+    run = store.create_run(items=items, expected=expected)
+    return JSONResponse({"run_id": run.run_id, "total": len(items)})
+
+
+@app.get("/batch/stream/{run_id}", response_class=StreamingResponse)
+async def batch_stream(
+    request: Request,
+    run_id: str,
+    extractor: LabelExtractor = Depends(get_extractor),
+    cache: LabelDataCache = Depends(get_cache),
+    store: BatchStore = Depends(get_batch_store),
+) -> StreamingResponse:
+    """Server-Sent Events stream of row + progress + done events.
+
+    Heartbeat comment every loop tick defeats Render's idle-connection
+    proxy timeout (ERROR_FIX_LOG note on SSE keep-alive).
+    """
+    run = store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"unknown run_id: {run_id}")
+
+    settings = get_settings()
+
+    async def _event_stream():
+        try:
+            async for event in run_batch(
+                run, extractor, cache, concurrency=settings.batch_concurrency
+            ):
+                payload = event["data"]
+                # For row events, also embed a small HTML preview so a
+                # curl consumer sees something human-readable. The Alpine
+                # client reads the JSON only.
+                if event["event"] == "row":
+                    html_fragment = templates.get_template(
+                        "_batch_row.html"
+                    ).render(row=payload)
+                    data = json.dumps(
+                        {
+                            "filename": payload["filename"],
+                            "overall": payload["overall"],
+                            "field_summary": payload["field_summary"],
+                            "error": payload["error"],
+                            "html": html_fragment,
+                        }
+                    )
+                else:
+                    data = json.dumps(payload)
+                yield f"event: {event['event']}\ndata: {data}\n\n"
+        except Exception as exc:  # noqa: BLE001 — surface on the stream
+            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx/render buffering
+        },
+    )
+
+
+@app.get("/batch/export/{run_id}.csv")
+async def batch_export(
+    run_id: str,
+    store: BatchStore = Depends(get_batch_store),
+) -> PlainTextResponse:
+    run = store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"unknown run_id: {run_id}")
+
+    csv_text = results_to_csv(run)
+    return PlainTextResponse(
+        content=csv_text,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="ttb-batch-{run_id}.csv"',
         },
     )

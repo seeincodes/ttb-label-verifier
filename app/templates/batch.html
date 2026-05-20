@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}TTB Label Verification — Batch{% endblock %}
+
+{% block content %}
+  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+           x-data="batchPage()">
+    <h1 class="text-xl font-semibold tracking-tight">Verify a batch</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Drop or select multiple label images plus an optional CSV of expected application data
+      (one row per filename). Rows stream in as each label completes; concurrency is bounded by
+      <code class="rounded bg-slate-100 px-1">BATCH_CONCURRENCY</code> (currently
+      <strong>{{ batch_concurrency }}</strong>).
+    </p>
+
+    <form @submit.prevent="submit"
+          class="mt-6 grid gap-4"
+          enctype="multipart/form-data">
+      <!-- Drag-and-drop dropzone -->
+      <div @drop.prevent="onDrop($event)" @dragover.prevent
+           class="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12">
+        <label for="batch-files" class="cursor-pointer text-sm font-medium text-slate-700 underline">
+          choose label images
+        </label>
+        <input type="file" id="batch-files" name="files"
+               accept="image/jpeg,image/png"
+               multiple
+               class="sr-only"
+               @change="onPick($event)" />
+        <p class="mt-2 text-xs text-slate-500">or drag and drop multiple files here</p>
+        <p class="mt-3 text-xs text-slate-700" x-show="files.length">
+          <span x-text="files.length"></span> file<span x-show="files.length !== 1">s</span> selected
+        </p>
+      </div>
+
+      <!-- Optional CSV -->
+      <div>
+        <label for="expected-csv" class="block text-sm font-medium text-slate-700">
+          Optional: expected data CSV (one row per filename)
+        </label>
+        <textarea id="expected-csv" rows="6"
+                  x-model="csvText"
+                  placeholder="filename,beverage_type,brand_name,class_type,alcohol_content_pct,net_contents,bottler_name,bottler_address,is_import,country_of_origin&#10;label1.png,distilled_spirits,Old Tom Distillery,Kentucky Straight Bourbon Whiskey,45.0,750 mL,Old Tom Distillery LLC,123 Distillery Rd,false,"
+                  class="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"></textarea>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit"
+                class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                :disabled="!files.length || running">
+          <span x-show="!running">Start batch</span>
+          <span x-show="running">Streaming…</span>
+        </button>
+        <a x-show="runId" :href="`/batch/export/${runId}.csv`"
+           class="text-sm text-slate-700 underline hover:text-slate-900">
+          Download CSV
+        </a>
+      </div>
+    </form>
+
+    <!-- Filter chips -->
+    <div class="mt-6 flex flex-wrap gap-2 text-xs" x-show="runId">
+      <template x-for="chip in ['all','failures','warnings','ok']" :key="chip">
+        <button type="button"
+                @click="filter = chip"
+                :class="filter === chip ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'"
+                class="rounded-full px-3 py-1 capitalize">
+          <span x-text="chip"></span>
+        </button>
+      </template>
+      <span class="ml-auto text-xs text-slate-500"
+            x-text="`${completed} / ${total} complete`"></span>
+    </div>
+
+    <!-- Results table -->
+    <table class="mt-4 w-full overflow-hidden rounded-md border border-slate-200 text-left text-sm"
+           x-show="runId">
+      <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600">
+        <tr>
+          <th class="px-3 py-2">Filename</th>
+          <th class="px-3 py-2">Verdict</th>
+          <th class="px-3 py-2">Per-field summary</th>
+          <th class="px-3 py-2">Error</th>
+        </tr>
+      </thead>
+      <tbody id="batch-rows" class="divide-y divide-slate-200 bg-white">
+        <template x-for="row in visibleRows()" :key="row.filename">
+          <tr :class="rowClass(row)">
+            <td class="px-3 py-2 font-mono text-xs" x-text="row.filename"></td>
+            <td class="px-3 py-2 font-semibold uppercase" x-text="row.overall"></td>
+            <td class="px-3 py-2 text-xs" x-text="row.field_summary"></td>
+            <td class="px-3 py-2 text-xs text-red-700" x-text="row.error || ''"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    function batchPage () {
+      return {
+        files: [],
+        csvText: '',
+        running: false,
+        runId: null,
+        rows: [],
+        completed: 0,
+        total: 0,
+        filter: 'all',
+
+        onPick (e) { this.files = Array.from(e.target.files); },
+        onDrop (e) {
+          this.files = Array.from(e.dataTransfer.files).filter(f =>
+            f.type === 'image/jpeg' || f.type === 'image/png'
+          );
+        },
+
+        rowClass (row) {
+          if (row.overall === 'pass')  return 'bg-emerald-50';
+          if (row.overall === 'warn')  return 'bg-amber-50';
+          if (row.overall === 'fail')  return 'bg-red-50';
+          return 'bg-slate-100';
+        },
+
+        visibleRows () {
+          if (this.filter === 'all')       return this.rows;
+          if (this.filter === 'failures')  return this.rows.filter(r => r.overall === 'fail' || r.overall === 'error');
+          if (this.filter === 'warnings')  return this.rows.filter(r => r.overall === 'warn');
+          if (this.filter === 'ok')        return this.rows.filter(r => r.overall === 'pass');
+          return this.rows;
+        },
+
+        async submit () {
+          if (!this.files.length) return;
+          this.running = true;
+          this.rows = [];
+          this.completed = 0;
+
+          const data = new FormData();
+          for (const f of this.files) data.append('files', f, f.name);
+          data.append('expected_csv', this.csvText);
+
+          const resp = await fetch('/batch', { method: 'POST', body: data });
+          if (!resp.ok) { this.running = false; return; }
+          const payload = await resp.json();
+          this.runId = payload.run_id;
+          this.total = this.files.length;
+
+          const es = new EventSource(`/batch/stream/${this.runId}`);
+          es.addEventListener('row', (e) => {
+            const row = JSON.parse(e.data);
+            this.rows = [...this.rows, row];
+          });
+          es.addEventListener('progress', (e) => {
+            const p = JSON.parse(e.data);
+            this.completed = p.completed;
+            this.total = p.total;
+          });
+          es.addEventListener('done', () => {
+            es.close();
+            this.running = false;
+          });
+          es.onerror = () => { es.close(); this.running = false; };
+        }
+      };
+    }
+  </script>
+{% endblock %}
