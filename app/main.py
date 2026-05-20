@@ -7,6 +7,7 @@ called inline.
 from __future__ import annotations
 
 import base64
+import json
 import time
 from pathlib import Path
 from typing import Optional
@@ -14,6 +15,7 @@ from typing import Optional
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+
 from app.config import get_settings
 from app.dependencies import get_extractor
 from app.extractors.base import LabelExtractor
@@ -21,12 +23,16 @@ from app.extractors.gemini import ExtractorError
 from app.models import (
     ApplicationData,
     BeverageType,
+    LabelData,
     VerificationResult,
     Verdict,
 )
 from app.verifier.rules import verify_label
 
 BASE_DIR = Path(__file__).resolve().parent
+SAMPLE_DIR = BASE_DIR.parent / "sample_data"
+AVAILABLE_SAMPLES = ("spirits-pass", "abv-fail", "warning-fail")
+
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(
@@ -256,6 +262,63 @@ async def verify(
             "result": result,
             "image_b64": base64.b64encode(image_bytes).decode("ascii"),
             "image_mime": mime,
+            "extracted_display": _extracted_display(label_data),
+            "expected_display": _expected_display(app_data),
+            "raw_extraction_json": label_data.model_dump_json(indent=2),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# /sample/{name} — pre-canned demo, bypasses extractor
+# ---------------------------------------------------------------------------
+
+
+@app.get("/sample/{name}", response_class=HTMLResponse)
+async def sample(request: Request, name: str) -> HTMLResponse:
+    """Render a pre-canned sample so the demo runs offline.
+
+    Loads sample_data/{name}.json (a `{label, application}` pair) plus
+    sample_data/{name}.png (placeholder image), runs only the
+    deterministic verifier, and renders the same `_result_panel.html`
+    fragment inside a full page. No extractor call.
+    """
+    if name not in AVAILABLE_SAMPLES:
+        raise HTTPException(status_code=404, detail=f"unknown sample: {name}")
+
+    json_path = SAMPLE_DIR / f"{name}.json"
+    png_path = SAMPLE_DIR / f"{name}.png"
+    if not json_path.exists() or not png_path.exists():
+        raise HTTPException(
+            status_code=404, detail=f"sample assets missing for {name}"
+        )
+
+    payload = json.loads(json_path.read_text())
+    label_data = LabelData.model_validate(payload["label"])
+    app_data = ApplicationData.model_validate(payload["application"])
+
+    field_verdicts = verify_label(label_data, app_data)
+    overall = Verdict.worst_of(fv.verdict for fv in field_verdicts.values())
+
+    result = VerificationResult(
+        overall=overall,
+        field_verdicts=field_verdicts,
+        raw_extraction=label_data,
+        cache_hit=False,
+        fallback_used=False,
+        extractor_used="sample (verifier-only, no model call)",
+        latency_ms=0,
+    )
+
+    image_bytes = png_path.read_bytes()
+    return templates.TemplateResponse(
+        request=request,
+        name="sample.html",
+        context={
+            "sample_name": name,
+            "result": result,
+            "image_b64": base64.b64encode(image_bytes).decode("ascii"),
+            "image_mime": "image/png",
             "extracted_display": _extracted_display(label_data),
             "expected_display": _expected_display(app_data),
             "raw_extraction_json": label_data.model_dump_json(indent=2),

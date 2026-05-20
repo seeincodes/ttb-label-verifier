@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}TTB Label Verification — Sample: {{ sample_name }}{% endblock %}
+
+{% block content %}
+  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <h1 class="text-xl font-semibold tracking-tight">Sample: {{ sample_name }}</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Pre-canned demo (extractor bypassed — runs only the deterministic 27 CFR verifier).
+      See <code class="text-xs">sample_data/{{ sample_name }}.json</code> for the fixture data.
+    </p>
+    <p class="mt-4 text-sm">
+      <a href="/" class="text-slate-700 underline hover:text-slate-900">← Back to upload</a>
+    </p>
+  </section>
+
+  <section class="mt-6">
+    {% include "_result_panel.html" %}
+  </section>
+{% endblock %}

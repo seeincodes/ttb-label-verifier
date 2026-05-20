@@ -59,7 +59,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] HTMX `hx-post` to `/verify` with `hx-target` swapping `_result_panel.html`.
 - [x] `_result_panel.html` — image thumbnail, colored verdict banner (PASS green / WARN yellow / FAIL red / ERROR gray), per-field table (extracted | expected | verdict | reasoning | CFR citation).
 - [x] Collapsible "view raw extraction" panel showing the raw JSON for audit.
-- [ ] Three pre-loaded samples in `sample_data/`: clean spirits (PASS), ABV mismatch (FAIL), malformed warning (FAIL with 27 CFR 16.22 cite).
+- [x] Three pre-loaded samples in `sample_data/`: clean spirits (PASS), ABV mismatch (FAIL), malformed warning (FAIL with 27 CFR 16.22 cite).
 
 ### 7. JSON upload path [MVP1]
 
