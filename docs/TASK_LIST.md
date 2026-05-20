@@ -99,9 +99,15 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 12. Deploy [MVP14]
 
-- [ ] Render web service: env vars set (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `EXTRACTOR_PROVIDER`, etc.), single-service web deploy.
-- [ ] End-to-end smoke test on the deployed URL.
-- [ ] Screenshots + 30 s screen-recording GIF captured for the README deployment-failure backup.
+- [ ] Render web service: env vars set (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `EXTRACTOR_PROVIDER`, etc.), single-service web deploy. <!-- pre-flight done (render.yaml verified, local production-style smoke passes); needs your Render dashboard. Checklist: `docs/DEPLOY.md`. -->
+- [ ] End-to-end smoke test on the deployed URL. <!-- smoke commands prepared in docs/DEPLOY.md §4 -->
+- [ ] Screenshots + 30 s screen-recording GIF captured for the README deployment-failure backup. <!-- capture path documented in docs/DEPLOY.md §5 -->
+
+**Pre-flight (done locally — see `docs/DEPLOY.md`):**
+
+- `render.yaml` reviewed: all env vars match `app/config.py` Settings; Render uvicorn start command verified locally; healthCheckPath `/health` returns 200.
+- Production-style smoke (no `--reload`): `/`, `/health`, `/sample/{spirits-pass,abv-fail,warning-fail}`, `POST /batch` all return expected status codes and HTML content with the right CFR citations.
+- Live extractor smoke: Gemini (6.8 s, §5.5 shape), OpenAI→Gemini fallback (7.1 s, audit.fallback_used=True).
 
 ## Phase 2: Polish
 
