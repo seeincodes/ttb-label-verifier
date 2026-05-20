@@ -40,7 +40,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] `app/verifier/normalize.py` — lowercase, strip punctuation, collapse whitespace; unit normalization (`750 mL` ↔ `0.75 L`); corporate-suffix stripping for bottler name (`LLC`, `Inc.`, `Co.`).
 - [x] `app/verifier/tolerances.py` — `tolerance_for(beverage, expected_abv)` returning the right tolerance per 27 CFR 5.65 / 7.65 / 4.36; cite the section in the docstring.
 - [ ] `app/verifier/rules.py` — one function per field (brand, class / type, ABV, net contents, bottler, country, warning); each with a CFR-cited docstring; each returns a `FieldVerdict` with `verdict`, `reason`, `cfr_citation`, `comparison_method`, `evidence`.
-- [ ] `app/verifier/warning.py` — canonical text constant from 27 CFR 16.21; two-layer check (text + formatting) per presearch §5.1; FAIL distinguishes text-mismatch from formatting-violation; cites 16.21 or 16.22 as appropriate.
+- [x] `app/verifier/warning.py` — canonical text constant from 27 CFR 16.21; two-layer check (text + formatting) per presearch §5.1; FAIL distinguishes text-mismatch from formatting-violation; cites 16.21 or 16.22 as appropriate.
 - [ ] ABV-abbreviation check — fail if extracted alcohol-content text contains literal "ABV"; accept "Alc. by Vol.", "Alc./Vol.", "ALC. BY VOL.", with or without periods, with or without `%`; cite 27 CFR 5.65 / 7.65 / 4.36 by beverage.
 - [ ] Beverage-type conditionality — verifier skips fields not required for the given beverage type per presearch §5.6.
 - [ ] Pytest unit tests for each rule (`tests/test_rules.py`, `tests/test_tolerances.py`, `tests/test_warning.py`, `tests/test_normalize.py`).
