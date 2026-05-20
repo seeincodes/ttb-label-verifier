@@ -173,3 +173,119 @@ class TestExtractedField:
         )
         assert parsed.value == "bourbon"
         assert parsed.confidence == "medium"
+
+
+# Sample vision-model JSON exactly matching the prompt contract in
+# presearch §5.5. Reused across LabelData tests so we test parsing of the
+# real wire shape, not a mock dict shape.
+GEMINI_SAMPLE_JSON = """
+{
+  "brand_name":           {"value": "OLD TOM DISTILLERY", "confidence": "high"},
+  "class_type":           {"value": "Kentucky Straight Bourbon Whiskey", "confidence": "high"},
+  "alcohol_content_pct":  {"value": 45.0, "confidence": "high"},
+  "alcohol_content_text": {"value": "45% ALC./VOL. (90 PROOF)", "confidence": "high"},
+  "net_contents":         {"value": "750 mL", "confidence": "high"},
+  "bottler_name":         {"value": "Old Tom Distillery LLC", "confidence": "medium"},
+  "bottler_address":      {"value": "123 Distillery Rd, Frankfort, KY", "confidence": "low"},
+  "country_of_origin":    {"value": null, "confidence": "high"},
+  "government_warning_text": {"value": "GOVERNMENT WARNING: ...", "confidence": "high"},
+  "government_warning_formatting": {
+    "caps_correct": true,
+    "bold_correct": true,
+    "continuous":   true,
+    "confidence":   "high"
+  }
+}
+"""
+
+
+class TestWarningFormatting:
+    """Per presearch §5.1 the formatting block is a dedicated three-question
+    structure asked of the vision model, separate from the warning *text*
+    extraction. Citation: 27 CFR 16.22 (caps, bold, continuous)."""
+
+    def test_all_three_questions_required(self):
+        from app.models import WarningFormatting
+
+        wf = WarningFormatting(
+            caps_correct=True,
+            bold_correct=True,
+            continuous=True,
+            confidence="high",
+        )
+        assert wf.caps_correct is True
+        assert wf.bold_correct is True
+        assert wf.continuous is True
+        assert wf.confidence == "high"
+
+    def test_missing_question_rejected(self):
+        from pydantic import ValidationError
+
+        from app.models import WarningFormatting
+
+        with pytest.raises(ValidationError):
+            WarningFormatting(
+                caps_correct=True, bold_correct=True, confidence="high"
+            )
+
+    def test_failing_formatting_still_validates(self):
+        """Verifier consumes this — failing formatting must be parseable
+        so we can FAIL the label, not crash on parse."""
+        from app.models import WarningFormatting
+
+        wf = WarningFormatting(
+            caps_correct=False,
+            bold_correct=True,
+            continuous=True,
+            confidence="medium",
+        )
+        assert wf.caps_correct is False
+
+
+class TestLabelData:
+    """The full per-field per-confidence extraction (presearch §5.5).
+    Verifier reads this as-is — the prompt contract is *exact*, not negotiable."""
+
+    def test_parses_canonical_gemini_payload(self):
+        from app.models import LabelData
+
+        data = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+
+        assert data.brand_name.value == "OLD TOM DISTILLERY"
+        assert data.brand_name.confidence == "high"
+        assert data.alcohol_content_pct.value == pytest.approx(45.0)
+        assert data.alcohol_content_text.value == "45% ALC./VOL. (90 PROOF)"
+        assert data.bottler_address.confidence == "low"
+        assert data.country_of_origin.value is None
+        assert data.government_warning_formatting.caps_correct is True
+
+    def test_alcohol_content_text_is_separate_from_pct(self):
+        """The verifier checks the literal "ABV" substring on the *text*
+        version, not on the numeric pct — so the schema must keep them
+        as two independent fields."""
+        from app.models import LabelData
+
+        data = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        assert data.alcohol_content_pct.value != data.alcohol_content_text.value
+
+    def test_missing_required_field_rejected(self):
+        """The prompt contract is exact. A model response missing
+        government_warning_formatting (most important field for §5.1)
+        must fail parse so we never silently skip the formatting check."""
+        import json
+
+        from pydantic import ValidationError
+
+        from app.models import LabelData
+
+        payload = json.loads(GEMINI_SAMPLE_JSON)
+        del payload["government_warning_formatting"]
+        with pytest.raises(ValidationError):
+            LabelData.model_validate(payload)
+
+    def test_round_trip_lossless(self):
+        from app.models import LabelData
+
+        data = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        again = LabelData.model_validate_json(data.model_dump_json())
+        assert again == data

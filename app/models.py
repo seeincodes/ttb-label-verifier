@@ -87,3 +87,39 @@ class ExtractedField(BaseModel, Generic[T]):
 
     value: Optional[T] = None
     confidence: Confidence
+
+
+class WarningFormatting(BaseModel):
+    """Three-part formatting check on the government warning (27 CFR 16.22):
+    caps on the phrase "GOVERNMENT WARNING", bold weight on that phrase,
+    and continuous (non-interrupted) presentation. Asked of the vision
+    model as three yes/no questions per presearch §5.1."""
+
+    caps_correct: bool
+    bold_correct: bool
+    continuous: bool
+    confidence: Confidence
+
+
+class LabelData(BaseModel):
+    """Vision-model output for a single label — the prompt contract from
+    presearch §5.5. Every textual field is wrapped in `ExtractedField` so
+    the verifier can apply the per-field confidence gate (MVP9).
+
+    `alcohol_content_pct` (float) and `alcohol_content_text` (raw label
+    string) are intentionally distinct: the verifier's numeric tolerance
+    check uses the float, and the "ABV"-abbreviation regulatory check
+    runs on the raw text. Conflating them would let an `Alc./Vol.` /
+    `ABV` formatting violation slip past.
+    """
+
+    brand_name: ExtractedField[str]
+    class_type: ExtractedField[str]
+    alcohol_content_pct: ExtractedField[float]
+    alcohol_content_text: ExtractedField[str]
+    net_contents: ExtractedField[str]
+    bottler_name: ExtractedField[str]
+    bottler_address: ExtractedField[str]
+    country_of_origin: ExtractedField[str]
+    government_warning_text: ExtractedField[str]
+    government_warning_formatting: WarningFormatting
