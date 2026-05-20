@@ -47,9 +47,9 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 5. Per-field confidence gate [MVP9]
 
-- [ ] Any required field with `low` confidence ⇒ field verdict `ERROR`, overall verdict `ERROR`.
-- [ ] ERROR reasons are actionable ("image too blurry to read class/type with confidence — please reshoot at a different angle").
-- [ ] Optional fields at `low` confidence flag the field as unverifiable but do not bubble to overall ERROR.
+- [x] Any required field with `low` confidence ⇒ field verdict `ERROR`, overall verdict `ERROR`.
+- [x] ERROR reasons are actionable ("image too blurry to read class/type with confidence — please reshoot at a different angle").
+- [x] Optional fields at `low` confidence flag the field as unverifiable but do not bubble to overall ERROR.
 
 ### 6. Single-label UI [MVP1] [MVP4] [MVP5]
 

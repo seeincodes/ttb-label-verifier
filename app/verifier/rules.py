@@ -119,7 +119,11 @@ def _confidence_error(
     method: str,
     extracted: ExtractedField,
 ) -> FieldVerdict:
-    """Build the canonical 'low confidence on required field' ERROR verdict."""
+    """Build the canonical 'low confidence on required field' ERROR verdict.
+
+    Used by every required-field rule (MVP9 §5.1). The reason mentions the
+    field name and instructs a reshoot — §5.2's actionable-error contract.
+    """
     return FieldVerdict(
         verdict=Verdict.ERROR,
         reason=(
@@ -131,6 +135,39 @@ def _confidence_error(
         evidence={
             "extracted_value": extracted.value,
             "extracted_confidence": extracted.confidence,
+        },
+    )
+
+
+def _optional_unverifiable_verdict(
+    *,
+    field_label: str,
+    method: str,
+    extracted: ExtractedField,
+    citation: str,
+) -> FieldVerdict:
+    """MVP9 §5.3: optional × low-confidence → WARN 'unverifiable', not ERROR.
+
+    Surfaces in the per-field verdict table so the agent sees we didn't
+    check this field, but doesn't bubble to overall ERROR (which would
+    force a reshoot for a field the regulator doesn't require for this
+    beverage type). The citation is included so the audit trail records
+    *which* optional regulation we declined to enforce.
+    """
+    return FieldVerdict(
+        verdict=Verdict.WARN,
+        reason=(
+            f"{field_label} extracted at low confidence — unverifiable from "
+            f"this image; the field is optional for this beverage type so "
+            f"the overall verdict is not blocked, but a human should glance "
+            f"at the label to confirm ({citation})"
+        ),
+        cfr_citation=citation,
+        comparison_method=method,
+        evidence={
+            "extracted_value": extracted.value,
+            "extracted_confidence": extracted.confidence,
+            "gate": "optional_unverifiable",
         },
     )
 
@@ -541,15 +578,25 @@ def verify_label(
         verdicts["class_type"] = check_class_type(
             label.class_type, application.class_type, beverage
         )
-    else:
-        # Optional — only run the rule if the application provided an
-        # expected value. If they did and the extraction is reliable,
-        # check it; otherwise skip silently.
-        if application.class_type is not None and label.class_type.confidence != "low":
+    elif application.class_type is not None:
+        # Optional for this beverage type but the agent supplied an
+        # expected value. Per MVP9 §5.3: if extraction confidence is low,
+        # surface a WARN ("unverifiable") so the agent sees that we didn't
+        # check this field — but never ERROR (would force a reshoot for a
+        # field the regulator doesn't require for this beverage type).
+        if label.class_type.confidence == "low":
+            verdicts["class_type"] = _optional_unverifiable_verdict(
+                field_label="class/type",
+                method="fuzzy_token_sort",
+                extracted=label.class_type,
+                citation=_CLASS_TYPE_CITATIONS[beverage],
+            )
+        else:
             verdicts["class_type"] = check_class_type(
                 label.class_type, application.class_type, beverage
             )
-        # else: silently skipped per §5.6 optional matrix.
+    # else: application gave us no expected value AND beverage doesn't
+    # require it — silently skip per §5.6.
 
     # 3. Alcohol content (required for spirits + OTHER; conditional for
     # wine / malt — but if the application gave us a number, we check).
