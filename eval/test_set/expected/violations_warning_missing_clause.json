@@ -1,0 +1,15 @@
+{
+  "bucket": "violations",
+  "expected_overall": "fail",
+  "notes": "Government warning is missing clause (2) ('Consumption of alcoholic beverages impairs your ability to drive a car...'). The verifier's text-content layer compares against the canonical 27 CFR 16.21 text and FAILs with the 16.21 citation. Formatting layer passes — the failure is purely textual, which the orchestrator's worst_of aggregation surfaces correctly.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

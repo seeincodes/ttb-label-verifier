@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "pass",
+  "notes": "Two §5.4 cosmetic-difference paths exercised at once: 'STONE'S THROW' (all-caps) vs 'Stone's Throw' (Dave Morrison's discovery interview example — must silent-PASS via normalize_text), AND bottler 'Stone's Throw Distillery, Inc.' vs application's 'Stone's Throw Distillery LLC' (different entity suffix — must silent-PASS via strip_corporate_suffixes). Both paths return PASS, not WARN, when the post-strip fuzzy score is ≥95.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Stone's Throw",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Stone's Throw Distillery LLC",
+    "bottler_address":      "555 Bourbon St, Louisville, KY",
+    "is_import":            false
+  }
+}

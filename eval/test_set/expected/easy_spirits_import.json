@@ -1,0 +1,16 @@
+{
+  "bucket": "easy",
+  "expected_overall": "pass",
+  "notes": "Clean imported spirits PASS — exercises the is_import=True path and the country-of-origin rule per 27 CFR 5.36(d). All other fields match 1:1.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Glenmoor Highland",
+    "class_type":           "Single Malt Scotch Whisky",
+    "alcohol_content_pct":  43.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Glenmoor Distillers Ltd",
+    "bottler_address":      "12 Glen Rd, Speyside, Scotland",
+    "is_import":            true,
+    "country_of_origin":    "Scotland"
+  }
+}

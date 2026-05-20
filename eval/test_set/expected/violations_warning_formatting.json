@@ -1,0 +1,15 @@
+{
+  "bucket": "violations",
+  "expected_overall": "fail",
+  "notes": "Warning text is canonical (passes 16.21 text layer) but 'Government Warning' is rendered in title case rather than ALL CAPS (caps_correct=false). 27 CFR 16.22 requires the phrase be in capital letters. The two-layer warning check distinguishes text-mismatch from formatting-violation: this is the latter. Citation is 16.22.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

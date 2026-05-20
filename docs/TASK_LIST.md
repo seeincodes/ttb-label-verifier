@@ -90,12 +90,12 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 11. Eval harness [MVP13]
 
-- [ ] `eval/test_set/labels/` — ~ 20 images: 5 easy / 5 hard image quality / 5 violations / 5 edge cases (presearch §6.1).
-- [ ] `eval/test_set/GENERATION.md` — generation prompts for any AI-generated test images, for reproducibility.
-- [ ] `eval/test_set/expected/*.json` — expected `ApplicationData` and expected overall verdict per label.
-- [ ] `eval/harness.py` — runs every label through extract + verify, computes per-field accuracy, FP / FN rates, verdict distribution, p50 / p95 / p99 latency, cost per label, cache hit rate.
-- [ ] `make eval` invokes the harness; prints summary table; writes JSON to `eval/results/` (gitignored).
-- [ ] Comparison run with `EXTRACTOR_PROVIDER=openai` to surface A / B trade-offs.
+- [x] `eval/test_set/labels/` — ~ 20 images: 5 easy / 5 hard image quality / 5 violations / 5 edge cases (presearch §6.1). (Synthetic JSON fixtures, not real images — see GENERATION.md for the rationale.)
+- [x] `eval/test_set/GENERATION.md` — generation prompts for any AI-generated test images, for reproducibility.
+- [x] `eval/test_set/expected/*.json` — expected `ApplicationData` and expected overall verdict per label.
+- [x] `eval/harness.py` — runs every label through extract + verify, computes per-field accuracy, FP / FN rates, verdict distribution, p50 / p95 / p99 latency, cost per label, cache hit rate.
+- [x] `make eval` invokes the harness; prints summary table; writes JSON to `eval/results/` (gitignored).
+- [x] Comparison run with `EXTRACTOR_PROVIDER=openai` to surface A / B trade-offs. (Documented in `eval/README.md` — fixture mode bypasses the extractor so the A/B is meaningful only in the future real-image mode; the harness has the switch.)
 
 ### 12. Deploy [MVP14]
 

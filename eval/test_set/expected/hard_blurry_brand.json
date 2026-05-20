@@ -1,0 +1,15 @@
+{
+  "bucket": "hard",
+  "expected_overall": "error",
+  "notes": "Blurry brand area — required field at low confidence triggers the MVP9 confidence gate and yields per-field ERROR (and overall ERROR), never a false PASS/FAIL.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

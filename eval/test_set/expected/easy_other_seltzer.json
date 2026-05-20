@@ -1,0 +1,15 @@
+{
+  "bucket": "easy",
+  "expected_overall": "pass",
+  "notes": "Clean OTHER (hard seltzer) PASS — OTHER bucket uses the ±0.3pp spirits tolerance by analogy (27 CFR 5.65(b) by analogy); class_type optional but supplied.",
+  "application": {
+    "beverage_type":        "other",
+    "brand_name":           "Summer Fizz Hard Seltzer",
+    "class_type":           "Hard Seltzer",
+    "alcohol_content_pct":  5.0,
+    "net_contents":         "355 mL",
+    "bottler_name":         "Summer Beverage Co.",
+    "bottler_address":      "21 Riverside Dr, Austin, TX 78701",
+    "is_import":            false
+  }
+}

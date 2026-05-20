@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "pass",
+  "notes": "Label prints '0.75 L'; application expected '750 mL'. Both parse to 750 mL via normalize_volume; volumes_equivalent returns True. §5.4 silent-PASS via the unit-normalization path (27 CFR 5.38). Demonstrates the verifier honors equivalent representations rather than spuriously failing on syntactic differences.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

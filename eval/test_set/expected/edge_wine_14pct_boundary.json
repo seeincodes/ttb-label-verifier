@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "pass",
+  "notes": "Wine at exactly 14.0% — the regulatory boundary between the wide (±1.5pp, ≤14%) and strict (±1.0pp, >14%) ABV bands per 27 CFR 4.36. Verifier's tolerance_for(WINE, 14.0) must return the ≤14 band (pinned by test_tolerances.py::test_wine_boundary_at_14_uses_low_band). Application matches exactly → PASS.",
+  "application": {
+    "beverage_type":        "wine",
+    "brand_name":           "Valley Vines",
+    "class_type":           "Table Wine",
+    "alcohol_content_pct":  14.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Valley Vines Winery",
+    "bottler_address":      "42 Vineyard Ln, Napa, CA",
+    "is_import":            false
+  }
+}

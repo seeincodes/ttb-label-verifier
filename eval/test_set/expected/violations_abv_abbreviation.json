@@ -1,0 +1,15 @@
+{
+  "bucket": "violations",
+  "expected_overall": "fail",
+  "notes": "Label uses the prohibited literal abbreviation 'ABV' (27 CFR 5.65(b) for spirits — accepts 'Alc. by Vol.' / 'Alc./Vol.' / 'ALC. BY VOL.' but not 'ABV'). Numeric value matches the application; the FAIL is purely the abbreviation form. The verifier's word-boundary regex catches this; the prompt has the model extract `alcohol_content_text` verbatim so the verifier sees the exact label string.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

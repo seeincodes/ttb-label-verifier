@@ -1,0 +1,16 @@
+{
+  "bucket": "violations",
+  "expected_overall": "fail",
+  "notes": "Application declares Scotland as country of origin; label prints 'Ireland'. 27 CFR 5.36(d) requires the country of origin be accurate. The verifier's fuzzy match on country_of_origin falls below the WARN threshold (Ireland ≠ Scotland), yielding FAIL.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Glenmore Highland",
+    "class_type":           "Single Malt Scotch Whisky",
+    "alcohol_content_pct":  43.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Glenmore Distillers Ltd",
+    "bottler_address":      "Speyside, Scotland",
+    "is_import":            true,
+    "country_of_origin":    "Scotland"
+  }
+}
