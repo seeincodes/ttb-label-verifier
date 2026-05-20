@@ -28,7 +28,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 3. Extractor abstraction + Gemini implementation [MVP6] [MVP7] [MVP9]
 
-- [ ] `app/extractors/base.py` — `LabelExtractor` ABC with `extract(image_bytes: bytes, beverage_type: BeverageType) -> LabelData`.
+- [x] `app/extractors/base.py` — `LabelExtractor` ABC with `extract(image_bytes: bytes, beverage_type: BeverageType) -> LabelData`.
 - [ ] `app/extractors/gemini.py` — `GeminiExtractor` using `google-generativeai`, model from `GEMINI_MODEL`, timeout from `EXTRACTION_TIMEOUT_SECONDS`.
 - [ ] Per-field confidence prompt — required JSON shape per presearch §5.5.
 - [ ] Prompt instructs the model to return `null` + `"low"` rather than guess.
