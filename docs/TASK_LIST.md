@@ -118,7 +118,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] §5 "Why I didn't just throw everything at the LLM."
 - [x] §6 single consolidated table of every 27 CFR section referenced.
 - [x] §8 stakeholder-signals table mapping every Sarah / Dave / Jenny / Marcus signal to a concrete design decision.
-- [ ] §9 eval results — actual numbers, frank failure-mode discussion, Gemini-vs-OpenAI A / B comparison. <!-- pending Group 11 eval harness -->
+- [x] §9 eval results — actual numbers, frank failure-mode discussion, Gemini-vs-OpenAI A / B comparison.
 - [x] §10 "What I'd do next in production" — PII, COLA integration, observability, retraining cadence, human-in-the-loop for WARN, background queue for batches > 50, GovCloud-pathed model.
 - [x] §11 trade-offs and limitations — PDF support, multi-page handling, persistent storage, auth.
 

@@ -289,49 +289,61 @@ Every signal from the four discovery interviews (Sarah Chen, Dave Morrison, Jenn
 
 ## §9 Eval results
 
-<!-- TODO: pending parallel eval-harness work (Task Group 11).
+The eval suite (`eval/harness.py`, runnable via `make eval`) processes 20 hand-authored JSON fixtures across 4 buckets — 5 easy / 5 hard image-quality / 5 violations / 5 edge cases (presearch §6.1). The fixtures bypass the live extractor and exercise the **deterministic verifier** path directly; `eval/test_set/GENERATION.md` documents the design of each bucket and `eval/README.md` documents the future real-image A/B-comparison harness.
 
-   When `eval/results/*.json` exists, populate the tables below with the
-   actual numbers from the final run (both `EXTRACTOR_PROVIDER=gemini`
-   and `EXTRACTOR_PROVIDER=openai`). Include the run date and the pricing
-   snapshot used for the cost-per-label figure.
+### Headline metrics — fixture-mode run, 2026-05-20
 
-   Pre-written headers below so the structure of this section is fixed. -->
+| Metric | Value | Target | Source |
+|---|---|---|---|
+| Overall verdict agreement (actual == expected per fixture) | **20 / 20** (100 %) | 100 % | `tests/test_harness_metrics.py::test_runs_all_fixtures_and_actual_matches_expected` |
+| **False-positive rate** (PASS on a true violation) | **0.0000** | Minimise — the critical metric | `eval/harness.py:105` |
+| **False-negative rate** (FAIL on a valid label) | **0.0000** | Minimise — recoverable but costly | `eval/harness.py:123` |
+| Verdict distribution | 9 PASS / 2 WARN / 5 FAIL / 4 ERROR | Mirrors test-set composition | `eval/harness.py:165` |
+| Verifier latency (p50 / p95 / p99) | 0 / 0 / 0 ms | < 100 ms (verifier hot path) | sub-millisecond, dominated by string normalisation |
+| Cost per label | $0.00 | N/A in fixture mode | `eval/harness.py:70` — Gemini pricing ≈ $0.000167 / label in real-image mode |
+| Cache hit rate | N/A | N/A in fixture mode | placeholder in JSON for stable schema |
 
-The eval suite (`eval/harness.py`, runnable via `make eval`) processes ~20 labels covering 5 easy / 5 hard image-quality / 5 violations / 5 edge cases (presearch §6.1). It runs twice — once with `EXTRACTOR_PROVIDER=gemini` and once with `EXTRACTOR_PROVIDER=openai` — and reports the metrics below.
+Per-field PASS rates on the checked-in fixtures:
 
-### Headline metrics (Gemini 2.5 Flash, pending run)
-
-| Metric | Value | Target |
+| Field | PASS rate | Why not 100 % |
 |---|---|---|
-| Overall accuracy (correct overall verdict) | TBD | — |
-| **False-positive rate** (PASS on a true violation) | TBD | Minimise — the critical metric |
-| **False-negative rate** (FAIL on a valid label) | TBD | Minimise — recoverable but costly |
-| Verdict distribution (% PASS / WARN / FAIL / ERROR) | TBD | Roughly mirrors test-set composition |
-| Latency p50 | TBD | < 2 s |
-| Latency p95 | TBD | ≤ 5 s (Sarah's bar) |
-| Latency p99 | TBD | < 10 s |
-| Cost per label (Gemini 2.5 Flash, [pricing date]) | TBD | ~ $0.000167 baseline |
-| Cache hit rate on second pass | TBD | ~ 100 % |
+| `brand_name` | 90 % | 2/20 fixtures intentionally fail (`edge_borderline_fuzzy_brand` → WARN, `hard_blurry_brand` → ERROR) |
+| `class_type` | 95 % | 1/20 (`hard_blurry_brand` co-fails class via correlated low confidence; canonical hard-class fixture WARNs not ERRORs) |
+| `alcohol_content` | 85 % | 3/20 — `violations_abv_abbreviation`, `violations_abv_over_tolerance`, `hard_blurry_abv_text` |
+| `net_contents` | 95 % | 1/20 — `hard_blurry_net_contents` ERROR |
+| `bottler_name` | 100 % | No fixtures target the bottler rule |
+| `bottler_address` | 100 % | No fixtures target the bottler address rule |
+| `country_of_origin` | 50 % | Rule only runs on 2 import fixtures; 1 of those is `violations_wrong_country` FAIL by design |
+| `government_warning` | 85 % | 3/20 — `violations_warning_missing_clause`, `violations_warning_formatting`, `hard_blurry_warning_formatting` |
 
-### A/B comparison (Gemini vs. OpenAI, pending run)
+### A/B comparison (Gemini 2.5 Flash vs. OpenAI GPT-4o)
 
-| Metric | Gemini 2.5 Flash | OpenAI GPT-4o |
+Fixture mode bypasses the extractor entirely, so the **A/B comparison is not exercised in this run** — `LabelData` is loaded from the fixture JSON, not produced by a model. The harness's metrics math is provider-agnostic by construction: the verifier consumes `LabelData`, never the image. Real-image mode (future work) would record a side-by-side comparison with the expected dimensions below; see `eval/README.md` for the harness command.
+
+| Dimension | Gemini 2.5 Flash | OpenAI GPT-4o |
 |---|---|---|
-| Overall accuracy | TBD | TBD |
-| False-positive rate | TBD | TBD |
-| False-negative rate | TBD | TBD |
-| Latency p50 / p95 | TBD | TBD |
-| Cost per label | TBD | TBD |
+| p50 extraction latency (cache miss) | ~1.5 s (presearch §3.2 baseline) | ~3 s (presearch §3.2 baseline) |
+| Cost per label | ~$0.000167 | ~$0.005 |
+| Hard-bucket recovery (degraded images) | Expected lower — fewer "low" confidences | Expected higher — strongest OCR on degraded images per presearch §3.2 |
+| Verifier FP rate on violations bucket | **Identical, by design** (verifier doesn't look at the image; provider divergence here would be a prompt-adherence issue, not a verifier issue) | Same |
+| Easy-bucket PASS rate | Both should be 5/5 (the easy bucket exists to confirm neither model spuriously fails) | Same |
 
-### Failure-mode discussion (pre-written framing)
+The deliberate seam is the `LabelExtractor` ABC (`app/extractors/base.py:19`): switching providers is one factory entry; the verifier and the metrics math don't change. The smoke harness `scripts/smoke_extractor.py` already proved the live Gemini path end-to-end (`docs/ERROR_FIX_LOG.md` 2026-05-19 — 6.8 s latency, JSON contract honored, MVP9 confidence-gate behavior verified on a blank image).
 
-The eval suite is explicitly set up to *find* failure modes, not to whitewash them. Likely failure modes the harness exposes, based on the design's known fragility points (MEMO §"Known Failure Modes"):
+### Failure-mode discussion
 
-- **Extraction-prompt brittleness across beverage types.** The same JSON contract has to cover wine without an ABV, malt without a class designation, and spirits with proof in addition to ABV. Eval failures here drive prompt iteration, not code changes.
-- **Vision-model formatting check unreliability.** The three yes/no formatting questions (caps, bold, continuous) are the softest part of the regulatory check — vision models can disagree with human reviewers on what counts as "bold." When the model returns `medium` confidence on formatting, the verdict is WARN rather than FAIL (`app/verifier/warning.py:107`) to avoid over-rejection.
-- **Generated test images drift from real labels.** AI-generated test labels are not a substitute for real production data. The README is honest about this; a real production rollout would run the eval suite on a held-back slice of actual COLA submissions before launch.
-- **Cost / pricing drift.** Gemini and OpenAI pricing changes; the recorded cost-per-label figure includes the date of the run.
+The 0/0 FP/FN rate in fixture mode is **expected and not impressive on its own** — the fixtures were hand-authored against the verifier's actual behavior, so a non-zero rate would mean either a fixture bug or a verifier regression. The value of the suite is:
+
+1. **Drift detection.** `tests/test_harness_metrics.py::test_runs_all_fixtures_and_actual_matches_expected` runs on every `make test`, so a verifier change that flips a fixture's verdict will fail CI immediately. This is the regression net for the regulatory rules.
+
+2. **Coverage breadth.** The 20 fixtures collectively exercise: every beverage type (spirits / wine / malt / other), the §5.6 conditionality matrix (class/type optional vs required, country only on imports), the wine 14 % ABV boundary, the §5.4 silent-PASS paths (cosmetic, unit-equivalent, corp-suffix), all four major regulatory violations (ABV abbreviation, ABV over tolerance, wrong country, malformed warning at both layers), and the MVP9 confidence-gate on each required field.
+
+3. **A documented gap.** Generated synthetic fixtures are NOT a substitute for real label distribution. The likely failure modes that real-image runs would surface and fixture mode cannot:
+
+   - **Extraction-prompt brittleness across beverage types.** Wine without an ABV, malt without a class designation, spirits with proof in addition to ABV — the prompt has to navigate this without fabricating fields. Eval failures here drive prompt iteration, not verifier changes.
+   - **Vision-model formatting check unreliability.** The three yes/no formatting questions (caps, bold, continuous) are the softest part of the regulatory check — vision models can disagree with human reviewers on what counts as "bold." The verifier already routes `low` confidence to ERROR rather than asserting on what it couldn't read; production should A/B `medium`-confidence behavior between the two providers.
+   - **Generated-vs-real distribution shift.** AI-generated test labels are not a substitute for real production data. A production rollout would re-run the eval on a held-back slice of actual COLA submissions before launch and freeze the new metrics there.
+   - **Cost / pricing drift.** Gemini and OpenAI pricing changes; future runs should record the date and the pricing snapshot used (the harness's `_PRICING_USD_PER_LABEL` constant at `eval/harness.py:70` is the canonical place to update).
 
 ---
 
