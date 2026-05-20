@@ -14,7 +14,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
 - [x] Gemini API smoke test (one real call against a sample image, JSON back).
 - [x] OpenAI API smoke test (same shape, same image).
-- [ ] Render service skeleton (`render.yaml` or service config) so deploy is wired before features land.
+- [x] Render service skeleton (`render.yaml` or service config) so deploy is wired before features land.
 
 ### 2. Pydantic schemas [MVP2] [MVP6] [MVP9] [MVP12]
 

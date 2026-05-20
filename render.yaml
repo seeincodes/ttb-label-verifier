@@ -1,0 +1,43 @@
+# Render Web Service definition for the TTB Label Verification prototype.
+# https://render.com/docs/blueprint-spec
+#
+# After connecting this repo as a Render Blueprint, set GEMINI_API_KEY and
+# OPENAI_API_KEY in the dashboard (sync: false below keeps them out of git).
+# Render auto-deploys on push to `main`.
+
+services:
+  - type: web
+    name: ttb-label-verifier
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # --- Secrets: set in the Render dashboard, not committed ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # --- Non-secret configuration ---
+      - key: EXTRACTOR_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: EXTRACTION_TIMEOUT_SECONDS
+        value: 8
+      - key: BATCH_CONCURRENCY
+        value: 5
+      - key: CACHE_MAXSIZE
+        value: 128
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PYTHON_VERSION
+        value: 3.11.9
