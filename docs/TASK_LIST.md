@@ -6,15 +6,15 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 1. Project setup [MVP14]
 
-- [ ] Create the repo layout from presearch §3.4 (`app/`, `tests/`, `eval/`, `sample_data/`).
-- [ ] `pyproject.toml` and `requirements.txt` with FastAPI, uvicorn[standard], jinja2, python-multipart, pydantic, pydantic-settings, rapidfuzz, cachetools, httpx, google-generativeai, openai, pytest.
-- [ ] `app/config.py` — `Settings` class via `pydantic-settings` reading from `.env`.
-- [ ] `.env.example` mirroring `.env` (no secret values).
-- [ ] `Makefile` with `dev`, `eval`, `test`, `deploy` targets.
-- [ ] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
-- [ ] Gemini API smoke test (one real call against a sample image, JSON back).
-- [ ] OpenAI API smoke test (same shape, same image).
-- [ ] Render service skeleton (`render.yaml` or service config) so deploy is wired before features land.
+- [x] Create the repo layout from presearch §3.4 (`app/`, `tests/`, `eval/`, `sample_data/`).
+- [x] `pyproject.toml` and `requirements.txt` with FastAPI, uvicorn[standard], jinja2, python-multipart, pydantic, pydantic-settings, rapidfuzz, cachetools, httpx, google-generativeai, openai, pytest.
+- [x] `app/config.py` — `Settings` class via `pydantic-settings` reading from `.env`.
+- [x] `.env.example` mirroring `.env` (no secret values).
+- [x] `Makefile` with `dev`, `eval`, `test`, `deploy` targets.
+- [x] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
+- [x] Gemini API smoke test (one real call against a sample image, JSON back).
+- [x] OpenAI API smoke test (same shape, same image).
+- [x] Render service skeleton (`render.yaml` or service config) so deploy is wired before features land.
 
 ### 2. Pydantic schemas [MVP2] [MVP6] [MVP9] [MVP12]
 

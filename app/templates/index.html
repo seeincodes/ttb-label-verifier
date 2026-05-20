@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}TTB Label Verification — Single label{% endblock %}
+
+{% block content %}
+  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <h1 class="text-xl font-semibold tracking-tight">Verify a label</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Upload a label image and the application data it was submitted with. The tool extracts the
+      label fields via vision AI ({{ extractor }}) and compares them to the expected values using
+      deterministic rules grounded in 27 CFR. Verdicts cite the specific regulation inline.
+    </p>
+
+    <p class="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+      Single-label upload form lands here in subtask 1.6 follow-on work (task group 6).
+    </p>
+  </section>
+{% endblock %}

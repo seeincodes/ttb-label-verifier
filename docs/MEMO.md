@@ -96,7 +96,7 @@ Batch flow: same lifecycle per label, run inside an `asyncio.Semaphore(BATCH_CON
 
 | Failure mode | Likelihood | Mitigation |
 |---|---|---|
-| Gemini API latency variance pushes a label over the 5 s bar | Medium | `EXTRACTION_TIMEOUT_SECONDS=8`; automatic OpenAI fallback; SSE for batch so users see progress not a spinner; cache for repeat queries |
+| Gemini API latency variance pushes a label over the 5 s bar | Medium | `EXTRACTION_TIMEOUT_SECONDS=12` (above the google-genai 10 s minimum deadline); automatic OpenAI fallback; SSE for batch so users see progress not a spinner; cache for repeat queries |
 | Extraction prompt brittle across beverage types | High | Build the eval suite early; iterate the prompt against eval failures; include few-shot examples in the prompt; ship the eval numbers in README §9 with frank discussion of remaining failure modes |
 | Government warning verbatim mismatch (multiple official variants) | Low (single canonical text confirmed from TTB.gov and 27 CFR 16.21) | Canonical text stored once in `app/verifier/warning.py` with the CFR citation in the docstring |
 | Vision-model formatting check unreliable | Medium | Phrase as three discrete yes / no questions with explicit visual definitions (caps / bold / continuous); if the model returns `medium` confidence on formatting, downgrade FAIL → WARN to avoid over-rejection |

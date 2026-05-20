@@ -52,7 +52,7 @@ Batch flow adds a `/batch/stream/{run_id}` SSE endpoint that yields one HTML fra
 | Frontend interactivity | HTMX (CDN) | 1.9.x | `hx-post` / `hx-target` / `hx-ext="sse"`; no JS framework or build step |
 | Visual styling | Tailwind CSS (Play CDN) | latest | One `<script>` tag, zero toolchain for prototype; production would use the CLI build |
 | Client-side state | Alpine.js (CDN) | 3.x | ~5 KB; used only for dropzone, image preview, small toggles (~30 lines total) |
-| Vision (primary) | Google Gemini 2.5 Flash via `google-generativeai` | latest SDK | ~1.5 s avg latency (fits the 5 s bar); ~$1.67 / 10k pages; GSA MAS-listed; Vertex AI has FedRAMP / IL4 path |
+| Vision (primary) | Google Gemini 2.5 Flash via `google-genai` | latest SDK | ~1.5 s avg latency (fits the 5 s bar); ~$1.67 / 10k pages; GSA MAS-listed; Vertex AI has FedRAMP / IL4 path |
 | Vision (fallback) | OpenAI GPT-4o via `openai` | latest SDK | Strongest OCR on degraded images; GSA MAS-listed; Azure OpenAI has FedRAMP High |
 | Fuzzy matching | rapidfuzz | ^3.9 | `token_sort_ratio`; battle-tested, fast |
 | Schema | Pydantic | ^2.7 | Type-safe models for `ApplicationData`, `LabelData`, `VerificationResult` |
@@ -75,7 +75,7 @@ Batch flow adds a `/batch/stream/{run_id}` SSE endpoint that yields one HTML fra
 - `python-multipart` — multipart upload parsing
 - `pydantic` — request / response schemas (`ApplicationData`, `LabelData`, `VerificationResult`)
 - `pydantic-settings` — `.env`-driven config
-- `google-generativeai` — Gemini 2.5 Flash extractor
+- `google-genai` — Gemini 2.5 Flash extractor
 - `openai` — GPT-4o fallback extractor
 - `httpx` — async HTTP client where needed
 - `rapidfuzz` — fuzzy string matching (`token_sort_ratio`)
@@ -110,7 +110,7 @@ OPENAI_API_KEY=                      # required if EXTRACTOR_PROVIDER=openai or 
 OPENAI_MODEL=gpt-4o
 
 # === Timeouts & Performance ===
-EXTRACTION_TIMEOUT_SECONDS=8         # per-call timeout; triggers fallback if exceeded
+EXTRACTION_TIMEOUT_SECONDS=12        # per-call timeout (Gemini SDK floors at 10s); triggers fallback if exceeded
 BATCH_CONCURRENCY=5                  # max simultaneous extractions in batch flow
 CACHE_MAXSIZE=128                    # LRU cache entries (keyed by image SHA-256)
 

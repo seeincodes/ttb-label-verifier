@@ -1,0 +1,24 @@
+[project]
+name = "ttb-label-verifier"
+version = "0.1.0"
+description = "TTB alcohol label verification prototype — vision AI extraction + deterministic 27 CFR verifier."
+requires-python = ">=3.11"
+authors = [
+    { name = "TTB Label Verification" },
+]
+license = { text = "MIT" }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "eval*", "scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
