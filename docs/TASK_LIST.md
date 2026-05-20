@@ -107,10 +107,10 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 13. Error boundaries and loading states
 
-- [ ] HTMX `hx-indicator` for loading state on Verify.
-- [ ] Friendly error page for upload failures (file too large, wrong type).
-- [ ] Timeout handling surfaced in the UI ("model timed out — retrying with fallback").
-- [ ] Accessibility pass: large hit targets (Sarah's "73-year-old mother" constraint), keyboard focus order, color-not-only verdict signaling.
+- [x] HTMX `hx-indicator` for loading state on Verify.
+- [x] Friendly error page for upload failures (file too large, wrong type).
+- [x] Timeout handling surfaced in the UI ("model timed out — retrying with fallback"). (Already covered: `_run_verification`'s ExtractorError path renders `_error_panel`; `FallbackExtractor` surfaces both vendor failures when double-failure happens — pinned by test_both_failures_surface_in_error_message.)
+- [x] Accessibility pass: large hit targets (Sarah's "73-year-old mother" constraint), keyboard focus order, color-not-only verdict signaling.
 
 ### 14. README writeup [DOC1] [DOC2] [DOC3] [DOC4]
 

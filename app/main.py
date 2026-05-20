@@ -189,14 +189,39 @@ def _error_fragment(request: Request, heading: str, message: str) -> HTMLRespons
     )
 
 
+class _ImageUploadError(Exception):
+    """Raised by `_read_image` for friendly-fragment-renderable failures.
+
+    The route catches this and returns `_error_panel.html` so HTMX swaps a
+    human-readable card into #result-panel rather than a raw JSON detail
+    blob (the default behavior for HTTPException).
+    """
+
+    def __init__(self, heading: str, message: str) -> None:
+        super().__init__(message)
+        self.heading = heading
+        self.message = message
+
+
 async def _read_image(image: UploadFile) -> bytes:
     image_bytes = await image.read()
     if len(image_bytes) == 0:
-        raise HTTPException(status_code=400, detail="uploaded image is empty")
+        raise _ImageUploadError(
+            heading="No image uploaded",
+            message=(
+                "The image field is empty. Please pick a JPG or PNG label "
+                "photo and try again."
+            ),
+        )
+    max_mb = _MAX_IMAGE_BYTES // (1024 * 1024)
     if len(image_bytes) > _MAX_IMAGE_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"image exceeds {_MAX_IMAGE_BYTES // (1024*1024)} MB limit",
+        raise _ImageUploadError(
+            heading="Image too large",
+            message=(
+                f"This label image is {len(image_bytes) // (1024*1024)} MB, which "
+                f"exceeds the {max_mb} MB upload limit. Compress or resize the "
+                "image and try again."
+            ),
         )
     return image_bytes
 
@@ -302,7 +327,10 @@ async def verify(
     extractor: LabelExtractor = Depends(get_extractor),
     cache: LabelDataCache = Depends(get_cache),
 ) -> HTMLResponse:
-    image_bytes = await _read_image(image)
+    try:
+        image_bytes = await _read_image(image)
+    except _ImageUploadError as exc:
+        return _error_fragment(request, exc.heading, exc.message)
 
     try:
         app_data = _build_application_data(
@@ -348,7 +376,10 @@ async def verify_json(
     JSON-parse and Pydantic validation errors as a graceful _error_panel
     fragment rather than a raw 400/422 (HTMX would otherwise swap the
     JSON-detail blob into the result panel)."""
-    image_bytes = await _read_image(image)
+    try:
+        image_bytes = await _read_image(image)
+    except _ImageUploadError as exc:
+        return _error_fragment(request, exc.heading, exc.message)
 
     try:
         payload = json.loads(application_json)
