@@ -91,11 +91,14 @@ VALID_APPLICATION_JSON = json.dumps(
 
 @pytest.fixture
 def client_and_stub():
+    from app.cache import LabelDataCache, get_cache
     from app.dependencies import get_extractor
     from app.main import app
 
     stub = StubExtractor(_fake_label())
+    fresh_cache = LabelDataCache(maxsize=4)
     app.dependency_overrides[get_extractor] = lambda: stub
+    app.dependency_overrides[get_cache] = lambda: fresh_cache
     yield TestClient(app), stub
     app.dependency_overrides.clear()
 

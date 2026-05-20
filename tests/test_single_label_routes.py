@@ -80,13 +80,21 @@ class StubExtractor(LabelExtractor):
 
 @pytest.fixture
 def make_client():
-    """Build a TestClient with the extractor dependency overridden."""
+    """Build a TestClient with extractor + cache dependencies overridden.
+
+    Each test gets a fresh LabelDataCache so cached extractions from a
+    previous test don't leak in (the production cache is a process
+    singleton; tests must isolate)."""
+    from app.cache import LabelDataCache
     from app.dependencies import get_extractor
+    from app.cache import get_cache
     from app.main import app
 
     def _make(canned: LabelData) -> tuple[TestClient, StubExtractor]:
         stub = StubExtractor(canned)
+        fresh_cache = LabelDataCache(maxsize=4)
         app.dependency_overrides[get_extractor] = lambda: stub
+        app.dependency_overrides[get_cache] = lambda: fresh_cache
         return TestClient(app), stub
 
     yield _make
@@ -293,6 +301,7 @@ class TestPostVerify:
     def test_extractor_error_renders_error_panel(self, make_client):
         """If the extractor raises ExtractorError, the user must see a
         graceful failure card, not a 500 page."""
+        from app.cache import LabelDataCache, get_cache
         from app.dependencies import get_extractor
         from app.extractors.gemini import ExtractorError
         from app.main import app
@@ -301,7 +310,10 @@ class TestPostVerify:
             async def extract(self, image_bytes, beverage_type, mime_type="image/jpeg"):
                 raise ExtractorError("vision model: 503 UNAVAILABLE")
 
+        # Fresh cache too — otherwise a hit from an earlier test would
+        # short-circuit the extractor and we'd never see the error path.
         app.dependency_overrides[get_extractor] = lambda: FailingExtractor()
+        app.dependency_overrides[get_cache] = lambda: LabelDataCache(maxsize=4)
         try:
             client = TestClient(app)
             resp = client.post("/verify", data=_form_data(), files=_files())

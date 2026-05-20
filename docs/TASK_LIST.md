@@ -68,9 +68,9 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 8. Cache [MVP8] [MVP10]
 
-- [ ] `app/cache.py` — `cachetools.LRUCache(maxsize=CACHE_MAXSIZE)`; key = `hashlib.sha256(image_bytes).hexdigest()`; value = the full `LabelData`.
-- [ ] Measure cache-miss / cache-hit paths; ensure hit returns in < 100 ms.
-- [ ] Surface `cache_hit` status in the result panel for the demo ("cached result — re-verified instantly").
+- [x] `app/cache.py` — `cachetools.LRUCache(maxsize=CACHE_MAXSIZE)`; key = `hashlib.sha256(image_bytes).hexdigest()`; value = the full `LabelData`.
+- [x] Measure cache-miss / cache-hit paths; ensure hit returns in < 100 ms.
+- [x] Surface `cache_hit` status in the result panel for the demo ("cached result — re-verified instantly").
 
 ### 9. Batch flow with SSE [MVP3]
 

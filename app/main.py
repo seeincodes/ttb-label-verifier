@@ -16,6 +16,7 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile, 
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from app.cache import LabelDataCache, get_cache
 from app.config import get_settings
 from app.dependencies import get_extractor
 from app.extractors.base import LabelExtractor
@@ -195,29 +196,46 @@ async def _run_verification(
     mime: str,
     app_data: ApplicationData,
     extractor: LabelExtractor,
+    cache: LabelDataCache,
 ) -> HTMLResponse:
     """Shared extract + verify + render path. /verify and /verify/json
     differ only in how they build `app_data`; everything downstream is
-    identical."""
+    identical.
+
+    Cache strategy (MVP8): look up by sha256(image_bytes); on miss, call
+    the extractor and populate the cache. We cache the *extraction*, not
+    the verification result, so a re-verify with different expected data
+    is sub-100 ms without re-paying for the model call.
+    """
     settings = get_settings()
-    started = time.perf_counter()
-    try:
-        label_data = await extractor.extract(
-            image_bytes=image_bytes,
-            beverage_type=app_data.beverage_type,
-            mime_type=mime,
-        )
-    except ExtractorError as exc:
-        elapsed_ms = int((time.perf_counter() - started) * 1000)
-        return _error_fragment(
-            request,
-            heading="Vision model could not read this label",
-            message=(
-                f"{exc} (after {elapsed_ms} ms). Please try again in a moment, "
-                "or upload a sharper image."
-            ),
-        )
-    latency_ms = int((time.perf_counter() - started) * 1000)
+    cache_key = cache.key_for(image_bytes)
+    cached = cache.get(cache_key)
+
+    if cached is not None:
+        label_data = cached
+        latency_ms = 0
+        cache_hit = True
+    else:
+        started = time.perf_counter()
+        try:
+            label_data = await extractor.extract(
+                image_bytes=image_bytes,
+                beverage_type=app_data.beverage_type,
+                mime_type=mime,
+            )
+        except ExtractorError as exc:
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+            return _error_fragment(
+                request,
+                heading="Vision model could not read this label",
+                message=(
+                    f"{exc} (after {elapsed_ms} ms). Please try again in a moment, "
+                    "or upload a sharper image."
+                ),
+            )
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        cache.put(cache_key, label_data)
+        cache_hit = False
 
     field_verdicts = verify_label(label_data, app_data)
     overall = Verdict.worst_of(fv.verdict for fv in field_verdicts.values())
@@ -226,7 +244,7 @@ async def _run_verification(
         overall=overall,
         field_verdicts=field_verdicts,
         raw_extraction=label_data,
-        cache_hit=False,
+        cache_hit=cache_hit,
         fallback_used=False,
         extractor_used=settings.extractor_provider,
         latency_ms=latency_ms,
@@ -260,6 +278,7 @@ async def verify(
     is_import: Optional[str] = Form(None),
     country_of_origin: Optional[str] = Form(None),
     extractor: LabelExtractor = Depends(get_extractor),
+    cache: LabelDataCache = Depends(get_cache),
 ) -> HTMLResponse:
     image_bytes = await _read_image(image)
 
@@ -288,6 +307,7 @@ async def verify(
         mime=mime,
         app_data=app_data,
         extractor=extractor,
+        cache=cache,
     )
 
 
@@ -297,6 +317,7 @@ async def verify_json(
     image: UploadFile = File(...),
     application_json: str = Form(...),
     extractor: LabelExtractor = Depends(get_extractor),
+    cache: LabelDataCache = Depends(get_cache),
 ) -> HTMLResponse:
     """Verify a single label with the expected data supplied as JSON.
 
@@ -332,6 +353,7 @@ async def verify_json(
         mime=mime,
         app_data=app_data,
         extractor=extractor,
+        cache=cache,
     )
 
 
