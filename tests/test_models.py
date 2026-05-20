@@ -447,3 +447,165 @@ class TestFieldVerdict:
         assert "0.31pp" in fv.reason
         assert fv.cfr_citation == "27 CFR 5.65(b)"
         assert fv.evidence["delta"] == pytest.approx(0.31)
+
+
+def _pass_fv(method: str = "exact"):
+    from app.models import FieldVerdict, Verdict
+
+    return FieldVerdict(
+        verdict=Verdict.PASS, comparison_method=method, evidence={}
+    )
+
+
+def _fail_fv(citation: str = "27 CFR 5.65(b)"):
+    from app.models import FieldVerdict, Verdict
+
+    return FieldVerdict(
+        verdict=Verdict.FAIL,
+        reason="mismatch",
+        cfr_citation=citation,
+        comparison_method="numeric_tolerance",
+        evidence={},
+    )
+
+
+class TestVerificationResult:
+    """The top-level response returned to the UI and persisted in the
+    audit-panel raw view. Must round-trip cleanly through JSON since the
+    cache stores it and the eval harness writes results to disk."""
+
+    def test_all_pass_result(self):
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        result = VerificationResult(
+            overall=Verdict.PASS,
+            field_verdicts={
+                "brand_name": _pass_fv("fuzzy_token_sort"),
+                "alcohol_content_pct": _pass_fv("numeric_tolerance"),
+            },
+            raw_extraction=raw,
+            cache_hit=False,
+            fallback_used=False,
+            extractor_used="gemini",
+            latency_ms=1520,
+        )
+        assert result.overall is Verdict.PASS
+        assert len(result.field_verdicts) == 2
+        assert result.extractor_used == "gemini"
+        assert result.latency_ms == 1520
+
+    def test_overall_must_match_worst_of_field_verdicts(self):
+        """The aggregate verdict is *derived*, not asserted. If a caller
+        claims overall=PASS while a field is FAIL, we reject — that would
+        be a silent regulatory false-PASS, which is the #1 metric to avoid."""
+        from pydantic import ValidationError
+
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        with pytest.raises(ValidationError):
+            VerificationResult(
+                overall=Verdict.PASS,
+                field_verdicts={
+                    "brand_name": _pass_fv(),
+                    "alcohol_content_pct": _fail_fv(),
+                },
+                raw_extraction=raw,
+                cache_hit=False,
+                fallback_used=False,
+                extractor_used="gemini",
+                latency_ms=1500,
+            )
+
+    def test_negative_latency_rejected(self):
+        from pydantic import ValidationError
+
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        with pytest.raises(ValidationError):
+            VerificationResult(
+                overall=Verdict.PASS,
+                field_verdicts={"brand_name": _pass_fv()},
+                raw_extraction=raw,
+                cache_hit=False,
+                fallback_used=False,
+                extractor_used="gemini",
+                latency_ms=-1,
+            )
+
+    def test_extractor_used_must_be_non_empty(self):
+        from pydantic import ValidationError
+
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        with pytest.raises(ValidationError):
+            VerificationResult(
+                overall=Verdict.PASS,
+                field_verdicts={"brand_name": _pass_fv()},
+                raw_extraction=raw,
+                cache_hit=False,
+                fallback_used=False,
+                extractor_used="",
+                latency_ms=100,
+            )
+
+    def test_field_verdicts_must_be_non_empty(self):
+        """A result with zero field verdicts means no rules ran — never a
+        valid state. The warning rule applies to every beverage type."""
+        from pydantic import ValidationError
+
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        with pytest.raises(ValidationError):
+            VerificationResult(
+                overall=Verdict.PASS,
+                field_verdicts={},
+                raw_extraction=raw,
+                cache_hit=False,
+                fallback_used=False,
+                extractor_used="gemini",
+                latency_ms=100,
+            )
+
+    def test_fallback_used_records_provider_swap(self):
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        result = VerificationResult(
+            overall=Verdict.PASS,
+            field_verdicts={"brand_name": _pass_fv()},
+            raw_extraction=raw,
+            cache_hit=False,
+            fallback_used=True,
+            extractor_used="openai",
+            latency_ms=3200,
+        )
+        assert result.fallback_used is True
+        assert result.extractor_used == "openai"
+
+    def test_round_trip_through_json(self):
+        """The cache stores `VerificationResult`; the eval harness writes
+        to disk; the audit panel renders raw JSON. Round-trip is mandatory."""
+        from app.models import LabelData, VerificationResult, Verdict
+
+        raw = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        original = VerificationResult(
+            overall=Verdict.FAIL,
+            field_verdicts={
+                "brand_name": _pass_fv(),
+                "alcohol_content_pct": _fail_fv(),
+            },
+            raw_extraction=raw,
+            cache_hit=True,
+            fallback_used=False,
+            extractor_used="gemini",
+            latency_ms=42,
+        )
+        parsed = VerificationResult.model_validate_json(
+            original.model_dump_json()
+        )
+        assert parsed == original

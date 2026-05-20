@@ -205,3 +205,41 @@ class FieldVerdict(BaseModel):
                 "(every regulatory WARN/FAIL cites the section it depends on)"
             )
         return self
+
+
+class VerificationResult(BaseModel):
+    """Aggregate response for a single label.
+
+    Returned to the UI, stored in the LRU cache, and persisted to disk by
+    the eval harness. `overall` is *derived* from `field_verdicts` via
+    `Verdict.worst_of` — we re-validate that invariant here so a buggy
+    caller can never assemble a result whose overall verdict disagrees
+    with its parts (a silent regulatory false-PASS is the single worst
+    failure mode for this product, per the FP-rate metric in MVP13).
+    """
+
+    overall: Verdict
+    field_verdicts: dict[str, FieldVerdict]
+    raw_extraction: LabelData
+    cache_hit: bool = False
+    fallback_used: bool = False
+    extractor_used: str = Field(min_length=1)
+    latency_ms: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _overall_matches_worst_of_fields(self) -> "VerificationResult":
+        if not self.field_verdicts:
+            raise ValueError(
+                "field_verdicts must be non-empty — every label runs at "
+                "least the government-warning rule per §5.6"
+            )
+        expected = Verdict.worst_of(
+            fv.verdict for fv in self.field_verdicts.values()
+        )
+        if self.overall is not expected:
+            raise ValueError(
+                f"overall={self.overall.value} disagrees with worst_of "
+                f"field_verdicts={expected.value} — overall must be derived "
+                "via Verdict.worst_of, never asserted independently"
+            )
+        return self
