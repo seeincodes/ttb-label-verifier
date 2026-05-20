@@ -13,7 +13,7 @@ Layered per presearch §5.2 / §5.4 / §5.5:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Generic, Iterable, Literal, Optional, TypeVar
+from typing import Any, Generic, Iterable, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -167,3 +167,41 @@ class Verdict(str, Enum):
         if not materialised:
             raise ValueError("worst_of() requires at least one verdict")
         return max(materialised, key=lambda v: v.severity)
+
+
+class FieldVerdict(BaseModel):
+    """One verifier rule's output for one field.
+
+    Per presearch §5.7: every non-PASS verdict carries both a CFR citation
+    and a human-readable reason. PASS may omit them (cosmetic-difference
+    silent passes have no regulatory basis to cite).
+
+    `evidence` is the raw comparison record (extracted vs expected, fuzzy
+    score, ABV delta, etc.) — shape varies by rule, so it's a free dict.
+    The verifier rules document their expected keys; the UI renders them
+    in the audit-panel JSON view.
+    """
+
+    verdict: Verdict
+    reason: str = ""
+    cfr_citation: str = ""
+    comparison_method: str = Field(min_length=1)
+    evidence: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _non_pass_needs_reason_and_citation(self) -> "FieldVerdict":
+        if self.verdict is Verdict.PASS:
+            return self
+        if not self.reason.strip():
+            raise ValueError(
+                f"verdict={self.verdict.value} requires a non-empty reason "
+                "(every WARN/FAIL/ERROR must be actionable per §5.7 / MVP4)"
+            )
+        # ERROR can come from the confidence gate, which is not itself a
+        # CFR violation — but every WARN/FAIL has a regulatory basis.
+        if self.verdict in (Verdict.WARN, Verdict.FAIL) and not self.cfr_citation.strip():
+            raise ValueError(
+                f"verdict={self.verdict.value} requires a cfr_citation "
+                "(every regulatory WARN/FAIL cites the section it depends on)"
+            )
+        return self

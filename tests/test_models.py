@@ -343,3 +343,107 @@ class TestVerdict:
 
         assert isinstance(Verdict.FAIL, str)
         assert Verdict("error") is Verdict.ERROR
+
+
+class TestFieldVerdict:
+    """One verifier rule's output. Per presearch §5.7 every non-PASS verdict
+    has a CFR citation and a human-readable reason — that's the explainability
+    contract behind MVP4 and the inline-citations interview signal."""
+
+    def test_pass_verdict_can_have_empty_reason_and_citation(self):
+        """A PASS doesn't always have a citation — fuzzy-match-≥95 silent
+        passes (cosmetic differences) are correctly cite-less."""
+        from app.models import FieldVerdict, Verdict
+
+        fv = FieldVerdict(
+            verdict=Verdict.PASS,
+            reason="",
+            cfr_citation="",
+            comparison_method="fuzzy_token_sort",
+            evidence={"score": 100},
+        )
+        assert fv.verdict is Verdict.PASS
+
+    def test_fail_verdict_requires_reason(self):
+        """A FAIL with no reason is unactionable for the agent — refuse it."""
+        from pydantic import ValidationError
+
+        from app.models import FieldVerdict, Verdict
+
+        with pytest.raises(ValidationError):
+            FieldVerdict(
+                verdict=Verdict.FAIL,
+                reason="",
+                cfr_citation="27 CFR 5.65(b)",
+                comparison_method="numeric_tolerance",
+                evidence={},
+            )
+
+    def test_fail_verdict_requires_citation(self):
+        """Every FAIL has a regulatory basis (§5.7). A reason without a
+        citation is just an opinion — the writeup signal is the citation."""
+        from pydantic import ValidationError
+
+        from app.models import FieldVerdict, Verdict
+
+        with pytest.raises(ValidationError):
+            FieldVerdict(
+                verdict=Verdict.FAIL,
+                reason="ABV exceeds tolerance",
+                cfr_citation="",
+                comparison_method="numeric_tolerance",
+                evidence={},
+            )
+
+    def test_warn_verdict_requires_reason_and_citation(self):
+        from pydantic import ValidationError
+
+        from app.models import FieldVerdict, Verdict
+
+        with pytest.raises(ValidationError):
+            FieldVerdict(
+                verdict=Verdict.WARN,
+                reason="",
+                cfr_citation="27 CFR 5.65(b)",
+                comparison_method="numeric_tolerance",
+                evidence={},
+            )
+
+    def test_error_verdict_requires_reason(self):
+        """ERROR reasons must be actionable per MVP9 ('image too blurry to
+        read X with confidence — please reshoot')."""
+        from pydantic import ValidationError
+
+        from app.models import FieldVerdict, Verdict
+
+        with pytest.raises(ValidationError):
+            FieldVerdict(
+                verdict=Verdict.ERROR,
+                reason="",
+                cfr_citation="",
+                comparison_method="confidence_gate",
+                evidence={},
+            )
+
+    def test_canonical_abv_fail_payload(self):
+        from app.models import FieldVerdict, Verdict
+
+        fv = FieldVerdict(
+            verdict=Verdict.FAIL,
+            reason=(
+                "ABV 45.31% exceeds tolerance vs expected 45.0% "
+                "(delta 0.31pp, tolerance ±0.3pp per 27 CFR 5.65(b))"
+            ),
+            cfr_citation="27 CFR 5.65(b)",
+            comparison_method="numeric_tolerance",
+            evidence={
+                "extracted": 45.31,
+                "expected": 45.0,
+                "delta": 0.31,
+                "tolerance": 0.3,
+            },
+        )
+        assert fv.verdict is Verdict.FAIL
+        assert "0.31pp" in fv.reason
+        assert fv.cfr_citation == "27 CFR 5.65(b)"
+        assert fv.evidence["delta"] == pytest.approx(0.31)
