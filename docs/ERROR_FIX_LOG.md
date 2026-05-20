@@ -51,6 +51,14 @@ Suggested category prefixes for this project:
 
 ## Log
 
+### 2026-05-19 — [GEMINI] Transient 503 UNAVAILABLE on `gemini-2.5-flash`
+
+- **Error:** `google.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'}}`
+- **Context:** First end-to-end run of `scripts/smoke_extractor.py` (the new harness that drives `app.extractors.gemini.GeminiExtractor`) against the synthetic 32x32 PNG. Latency 1660 ms before the 503. Immediate retry succeeded at 6787 ms.
+- **Root cause:** Gemini shared-infra overload. The 503 came from Google's side, not from a malformed request — the SDK call shape was correct, the timeout was 12 s (above the SDK's 10 s floor), and the second attempt with no changes succeeded.
+- **Fix:** No code change. The extractor's existing `try/except Exception → ExtractorError(... from exc)` already wraps SDK errors cleanly. The fallback layer in task group 10 (Gemini timeout/5xx → retry once with OpenAI) is what this class of error is *for*.
+- **Prevention:** Task group 10 implementation must (a) classify `ServerError` 503/502/504 as fallback-eligible (transient) vs. `ClientError` 400/401/403 as terminal (don't retry), and (b) keep the fallback at one retry — recursive fallback on a sustained Gemini outage would just inflate latency. The `ExtractorError.__cause__` chaining preserves the SDK status code for that classification.
+
 ### 2026-05-19 — [GEMINI] `google-genai` SDK enforces a 10s minimum deadline
 
 - **Error:** `google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {... 'message': 'Manually set deadline 8s is too short. Minimum allowed deadline is 10s.'}}`

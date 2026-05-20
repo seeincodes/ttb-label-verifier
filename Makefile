@@ -1,4 +1,4 @@
-.PHONY: help install dev test eval smoke-gemini smoke-openai deploy clean
+.PHONY: help install dev test eval smoke-gemini smoke-openai smoke-extractor deploy clean
 
 # Use the project-local venv if present; fall back to system python.
 VENV       := .venv
@@ -13,8 +13,9 @@ help:
 	@echo "  dev            Run the FastAPI app with hot reload on $$HOST:$$PORT"
 	@echo "  test           Run pytest unit tests"
 	@echo "  eval           Run the eval harness against eval/test_set/"
-	@echo "  smoke-gemini   One-shot smoke test of the Gemini extractor"
-	@echo "  smoke-openai   One-shot smoke test of the OpenAI extractor"
+	@echo "  smoke-gemini   One-shot smoke test of the bare Gemini SDK"
+	@echo "  smoke-openai   One-shot smoke test of the bare OpenAI SDK"
+	@echo "  smoke-extractor End-to-end smoke through GeminiExtractor (prompt+parse)"
 	@echo "  deploy         Push to main (Render auto-deploys)"
 	@echo "  clean          Remove caches and the venv"
 
@@ -39,6 +40,9 @@ smoke-gemini:
 
 smoke-openai:
 	$(PYTHON) scripts/smoke_openai.py
+
+smoke-extractor:
+	$(PYTHON) scripts/smoke_extractor.py $(ARGS)
 
 deploy:
 	@echo "Render auto-deploys on push to main. To trigger:"
