@@ -9,7 +9,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] Create the repo layout from presearch §3.4 (`app/`, `tests/`, `eval/`, `sample_data/`).
 - [x] `pyproject.toml` and `requirements.txt` with FastAPI, uvicorn[standard], jinja2, python-multipart, pydantic, pydantic-settings, rapidfuzz, cachetools, httpx, google-generativeai, openai, pytest.
 - [x] `app/config.py` — `Settings` class via `pydantic-settings` reading from `.env`.
-- [ ] `.env.example` mirroring `.env` (no secret values).
+- [x] `.env.example` mirroring `.env` (no secret values).
 - [ ] `Makefile` with `dev`, `eval`, `test`, `deploy` targets.
 - [ ] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
 - [ ] Gemini API smoke test (one real call against a sample image, JSON back).
