@@ -53,13 +53,13 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 6. Single-label UI [MVP1] [MVP4] [MVP5]
 
-- [ ] `app/templates/base.html` — base layout, HTMX + Alpine.js + Tailwind CDN tags.
-- [ ] `app/templates/index.html` — single-label upload form, beverage-type select, all 7 expected-data fields, "Try a sample label" buttons.
-- [ ] Alpine.js image preview before submit.
-- [ ] HTMX `hx-post` to `/verify` with `hx-target` swapping `_result_panel.html`.
-- [ ] `_result_panel.html` — image thumbnail, colored verdict banner (PASS green / WARN yellow / FAIL red / ERROR gray), per-field table (extracted | expected | verdict | reasoning | CFR citation).
-- [ ] Collapsible "view raw extraction" panel showing the raw JSON for audit.
-- [ ] Three pre-loaded samples in `sample_data/`: clean spirits (PASS), ABV mismatch (FAIL), malformed warning (FAIL with 27 CFR 16.22 cite).
+- [x] `app/templates/base.html` — base layout, HTMX + Alpine.js + Tailwind CDN tags.
+- [x] `app/templates/index.html` — single-label upload form, beverage-type select, all 7 expected-data fields, "Try a sample label" buttons.
+- [x] Alpine.js image preview before submit.
+- [x] HTMX `hx-post` to `/verify` with `hx-target` swapping `_result_panel.html`.
+- [x] `_result_panel.html` — image thumbnail, colored verdict banner (PASS green / WARN yellow / FAIL red / ERROR gray), per-field table (extracted | expected | verdict | reasoning | CFR citation).
+- [x] Collapsible "view raw extraction" panel showing the raw JSON for audit.
+- [x] Three pre-loaded samples in `sample_data/`: clean spirits (PASS), ABV mismatch (FAIL), malformed warning (FAIL with 27 CFR 16.22 cite).
 
 ### 7. JSON upload path [MVP1]
 

@@ -1,0 +1,88 @@
+{# Single-label result fragment. NEVER wrap in <html>/<body> — HTMX swaps
+   the innerHTML of #result-panel and a full document blows the layout up
+   (see ERROR_FIX_LOG: 'HTMX fragment responses must NOT include the full
+   HTML shell'). #}
+
+{# Verdict-banner color classes per §5.4. Keep the mapping in one place
+   so a verdict added in the model gets one Tailwind class change here. #}
+{% set banner_classes = {
+  "pass":  "border-emerald-300 bg-emerald-50 text-emerald-900",
+  "warn":  "border-amber-300 bg-amber-50 text-amber-900",
+  "fail":  "border-red-300 bg-red-50 text-red-900",
+  "error": "border-slate-300 bg-slate-100 text-slate-900",
+} %}
+{% set row_classes = {
+  "pass":  "bg-emerald-50 text-emerald-900",
+  "warn":  "bg-amber-50 text-amber-900",
+  "fail":  "bg-red-50 text-red-900",
+  "error": "bg-slate-100 text-slate-900",
+} %}
+
+<article class="rounded-lg border bg-white shadow-sm
+                {{ banner_classes[result.overall.value] }} p-6">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <div class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider
+                  {{ banner_classes[result.overall.value] }}">
+        <span aria-hidden="true">●</span>
+        <span>{{ result.overall.value.upper() }}</span>
+      </div>
+      <h2 class="mt-3 text-lg font-semibold tracking-tight text-slate-900">Verification result</h2>
+      <p class="text-xs text-slate-500">
+        Extractor: {{ result.extractor_used }} · Latency: {{ result.latency_ms }} ms
+        {% if result.cache_hit %} · cache hit{% endif %}
+        {% if result.fallback_used %} · fallback used{% endif %}
+      </p>
+    </div>
+    <div class="rounded-md border border-slate-200 bg-slate-50 p-2">
+      <img src="data:{{ image_mime }};base64,{{ image_b64 }}"
+           alt="Submitted label"
+           class="max-h-32 max-w-[16rem] rounded" />
+    </div>
+  </header>
+
+  <table class="mt-6 w-full overflow-hidden rounded-md border border-slate-200 text-left text-sm">
+    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600">
+      <tr>
+        <th class="px-3 py-2">Field</th>
+        <th class="px-3 py-2">Extracted</th>
+        <th class="px-3 py-2">Expected</th>
+        <th class="px-3 py-2">Verdict</th>
+        <th class="px-3 py-2">Reasoning &amp; CFR citation</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-200 bg-white">
+      {% for field_name, fv in result.field_verdicts.items() %}
+        <tr class="{{ row_classes[fv.verdict.value] }}">
+          <td class="px-3 py-2 font-medium">{{ field_name }}</td>
+          <td class="px-3 py-2 align-top">
+            <code class="text-xs">{{ extracted_display[field_name] | default("—") }}</code>
+          </td>
+          <td class="px-3 py-2 align-top">
+            <code class="text-xs">{{ expected_display[field_name] | default("—") }}</code>
+          </td>
+          <td class="px-3 py-2 align-top font-semibold uppercase tracking-wider">
+            {{ fv.verdict.value }}
+          </td>
+          <td class="px-3 py-2 align-top text-xs">
+            {% if fv.reason %}
+              <p>{{ fv.reason }}</p>
+            {% endif %}
+            {% if fv.cfr_citation %}
+              <p class="mt-1 text-[10px] uppercase tracking-wider text-slate-500">
+                cite: {{ fv.cfr_citation }}
+              </p>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <details class="mt-6 rounded-md border border-slate-200 bg-slate-50 p-3">
+    <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-slate-600">
+      view raw extraction (audit panel)
+    </summary>
+    <pre class="mt-3 overflow-x-auto text-[11px] leading-snug text-slate-800">{{ raw_extraction_json }}</pre>
+  </details>
+</article>
