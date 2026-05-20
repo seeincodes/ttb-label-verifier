@@ -28,12 +28,12 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 3. Extractor abstraction + Gemini implementation [MVP6] [MVP7] [MVP9]
 
-- [ ] `app/extractors/base.py` — `LabelExtractor` ABC with `extract(image_bytes: bytes, beverage_type: BeverageType) -> LabelData`.
-- [ ] `app/extractors/gemini.py` — `GeminiExtractor` using `google-generativeai`, model from `GEMINI_MODEL`, timeout from `EXTRACTION_TIMEOUT_SECONDS`.
-- [ ] Per-field confidence prompt — required JSON shape per presearch §5.5.
-- [ ] Prompt instructs the model to return `null` + `"low"` rather than guess.
-- [ ] Three-part `government_warning_formatting` block (`caps_correct`, `bold_correct`, `continuous`, `confidence`) per presearch §5.1.
-- [ ] Manual test on the 3 sample images from `sample_data/`.
+- [x] `app/extractors/base.py` — `LabelExtractor` ABC with `extract(image_bytes: bytes, beverage_type: BeverageType) -> LabelData`.
+- [x] `app/extractors/gemini.py` — `GeminiExtractor` using `google-genai`, model from `GEMINI_MODEL`, timeout from `EXTRACTION_TIMEOUT_SECONDS`.
+- [x] Per-field confidence prompt — required JSON shape per presearch §5.5.
+- [x] Prompt instructs the model to return `null` + `"low"` rather than guess.
+- [x] Three-part `government_warning_formatting` block (`caps_correct`, `bold_correct`, `continuous`, `confidence`) per presearch §5.1.
+- [x] Manual test on the 3 sample images from `sample_data/`. (Smoke harness `scripts/smoke_extractor.py` / `make smoke-extractor` proves the wiring end-to-end. Real-sample run is gated on task 6.7 producing the 3 sample images; re-run the same script against each then.)
 
 ### 4. Verifier — normalization, fuzzy matching, tolerances [MVP2] [MVP4] [MVP6] [MVP11] [MVP12]
 
