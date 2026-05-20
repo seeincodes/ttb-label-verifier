@@ -30,9 +30,9 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 - [x] `app/extractors/base.py` — `LabelExtractor` ABC with `extract(image_bytes: bytes, beverage_type: BeverageType) -> LabelData`.
 - [ ] `app/extractors/gemini.py` — `GeminiExtractor` using `google-generativeai`, model from `GEMINI_MODEL`, timeout from `EXTRACTION_TIMEOUT_SECONDS`.
-- [ ] Per-field confidence prompt — required JSON shape per presearch §5.5.
-- [ ] Prompt instructs the model to return `null` + `"low"` rather than guess.
-- [ ] Three-part `government_warning_formatting` block (`caps_correct`, `bold_correct`, `continuous`, `confidence`) per presearch §5.1.
+- [x] Per-field confidence prompt — required JSON shape per presearch §5.5.
+- [x] Prompt instructs the model to return `null` + `"low"` rather than guess.
+- [x] Three-part `government_warning_formatting` block (`caps_correct`, `bold_correct`, `continuous`, `confidence`) per presearch §5.1.
 - [ ] Manual test on the 3 sample images from `sample_data/`.
 
 ### 4. Verifier — normalization, fuzzy matching, tolerances [MVP2] [MVP4] [MVP6] [MVP11] [MVP12]
