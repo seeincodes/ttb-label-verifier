@@ -1,0 +1,10 @@
+{# Compact one-row fragment for the SSE stream — embedded inside the
+   row event's `data:` payload. The client renders this string into the
+   table cell *or* parses the JSON payload's fields; the JS in batch.html
+   currently uses the JSON path, but we still emit the HTML so a curl
+   consumer of the SSE stream can see a human-readable preview. #}
+<article class="text-xs">
+  <strong>{{ row.filename }}</strong> —
+  <span class="uppercase">{{ row.overall }}</span>{% if row.field_summary %} ({{ row.field_summary }}){% endif %}
+  {% if row.error %} — error: {{ row.error }}{% endif %}
+</article>

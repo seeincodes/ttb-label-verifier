@@ -74,12 +74,12 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 9. Batch flow with SSE [MVP3]
 
-- [ ] `app/templates/batch.html` — Alpine.js drag-and-drop dropzone, optional CSV upload for expected data (one row per filename).
-- [ ] `POST /batch` accepts files + CSV, returns `{run_id}`.
-- [ ] `GET /batch/stream/{run_id}` SSE endpoint yields `_batch_row.html` fragment per completed label plus `progress` events.
-- [ ] Concurrency bounded by `asyncio.Semaphore(BATCH_CONCURRENCY)`.
-- [ ] Filter chips (All / Failures / Warnings / OK) implemented client-side.
-- [ ] `GET /batch/export/{run_id}.csv` — CSV export of results.
+- [x] `app/templates/batch.html` — Alpine.js drag-and-drop dropzone, optional CSV upload for expected data (one row per filename).
+- [x] `POST /batch` accepts files + CSV, returns `{run_id}`.
+- [x] `GET /batch/stream/{run_id}` SSE endpoint yields `_batch_row.html` fragment per completed label plus `progress` events.
+- [x] Concurrency bounded by `asyncio.Semaphore(BATCH_CONCURRENCY)`.
+- [x] Filter chips (All / Failures / Warnings / OK) implemented client-side.
+- [x] `GET /batch/export/{run_id}.csv` — CSV export of results.
 
 ### 10. OpenAI fallback + model swap [MVP7]
 
