@@ -63,8 +63,8 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 7. JSON upload path [MVP1]
 
-- [ ] Accept structured JSON upload as an alternative to the form for expected data.
-- [ ] Validate via `ApplicationData`; surface Pydantic validation errors in the UI.
+- [x] Accept structured JSON upload as an alternative to the form for expected data.
+- [x] Validate via `ApplicationData`; surface Pydantic validation errors in the UI.
 
 ### 8. Cache [MVP8] [MVP10]
 

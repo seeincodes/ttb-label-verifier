@@ -166,21 +166,17 @@ def _show(value) -> str:
     return str(value)
 
 
-@app.post("/verify", response_class=HTMLResponse)
-async def verify(
-    request: Request,
-    image: UploadFile = File(...),
-    beverage_type: str = Form(...),
-    brand_name: str = Form(...),
-    net_contents: str = Form(...),
-    bottler_name: str = Form(...),
-    bottler_address: str = Form(...),
-    class_type: Optional[str] = Form(None),
-    alcohol_content_pct: Optional[str] = Form(None),
-    is_import: Optional[str] = Form(None),
-    country_of_origin: Optional[str] = Form(None),
-    extractor: LabelExtractor = Depends(get_extractor),
-) -> HTMLResponse:
+def _error_fragment(request: Request, heading: str, message: str) -> HTMLResponse:
+    """Render the _error_panel fragment with HTTP 200 so HTMX swaps it in."""
+    return templates.TemplateResponse(
+        request=request,
+        name="_error_panel.html",
+        context={"heading": heading, "message": message},
+        status_code=200,
+    )
+
+
+async def _read_image(image: UploadFile) -> bytes:
     image_bytes = await image.read()
     if len(image_bytes) == 0:
         raise HTTPException(status_code=400, detail="uploaded image is empty")
@@ -189,36 +185,21 @@ async def verify(
             status_code=413,
             detail=f"image exceeds {_MAX_IMAGE_BYTES // (1024*1024)} MB limit",
         )
+    return image_bytes
 
-    try:
-        app_data = _build_application_data(
-            beverage_type=beverage_type,
-            brand_name=brand_name,
-            class_type=class_type,
-            alcohol_content_pct=alcohol_content_pct,
-            net_contents=net_contents,
-            bottler_name=bottler_name,
-            bottler_address=bottler_address,
-            is_import=_coerce_is_import(is_import),
-            country_of_origin=country_of_origin,
-        )
-    # ValidationError is a subclass of ValueError in pydantic v2, but
-    # BeverageType("unknown") and float("abc") both raise plain ValueError
-    # before Pydantic gets involved — catch the base.
-    except ValueError as exc:
-        return templates.TemplateResponse(
-            request=request,
-            name="_error_panel.html",
-            context={
-                "heading": "Invalid application data",
-                "message": str(exc),
-            },
-            status_code=200,
-        )
 
-    mime = _mime_from_upload(image)
+async def _run_verification(
+    *,
+    request: Request,
+    image_bytes: bytes,
+    mime: str,
+    app_data: ApplicationData,
+    extractor: LabelExtractor,
+) -> HTMLResponse:
+    """Shared extract + verify + render path. /verify and /verify/json
+    differ only in how they build `app_data`; everything downstream is
+    identical."""
     settings = get_settings()
-
     started = time.perf_counter()
     try:
         label_data = await extractor.extract(
@@ -228,17 +209,13 @@ async def verify(
         )
     except ExtractorError as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        return templates.TemplateResponse(
-            request=request,
-            name="_error_panel.html",
-            context={
-                "heading": "Vision model could not read this label",
-                "message": (
-                    f"{exc} (after {elapsed_ms} ms). Please try again in a moment, "
-                    "or upload a sharper image."
-                ),
-            },
-            status_code=200,
+        return _error_fragment(
+            request,
+            heading="Vision model could not read this label",
+            message=(
+                f"{exc} (after {elapsed_ms} ms). Please try again in a moment, "
+                "or upload a sharper image."
+            ),
         )
     latency_ms = int((time.perf_counter() - started) * 1000)
 
@@ -266,6 +243,95 @@ async def verify(
             "expected_display": _expected_display(app_data),
             "raw_extraction_json": label_data.model_dump_json(indent=2),
         },
+    )
+
+
+@app.post("/verify", response_class=HTMLResponse)
+async def verify(
+    request: Request,
+    image: UploadFile = File(...),
+    beverage_type: str = Form(...),
+    brand_name: str = Form(...),
+    net_contents: str = Form(...),
+    bottler_name: str = Form(...),
+    bottler_address: str = Form(...),
+    class_type: Optional[str] = Form(None),
+    alcohol_content_pct: Optional[str] = Form(None),
+    is_import: Optional[str] = Form(None),
+    country_of_origin: Optional[str] = Form(None),
+    extractor: LabelExtractor = Depends(get_extractor),
+) -> HTMLResponse:
+    image_bytes = await _read_image(image)
+
+    try:
+        app_data = _build_application_data(
+            beverage_type=beverage_type,
+            brand_name=brand_name,
+            class_type=class_type,
+            alcohol_content_pct=alcohol_content_pct,
+            net_contents=net_contents,
+            bottler_name=bottler_name,
+            bottler_address=bottler_address,
+            is_import=_coerce_is_import(is_import),
+            country_of_origin=country_of_origin,
+        )
+    # ValidationError is a subclass of ValueError in pydantic v2, but
+    # BeverageType("unknown") and float("abc") both raise plain ValueError
+    # before Pydantic gets involved — catch the base.
+    except ValueError as exc:
+        return _error_fragment(request, "Invalid application data", str(exc))
+
+    mime = _mime_from_upload(image)
+    return await _run_verification(
+        request=request,
+        image_bytes=image_bytes,
+        mime=mime,
+        app_data=app_data,
+        extractor=extractor,
+    )
+
+
+@app.post("/verify/json", response_class=HTMLResponse)
+async def verify_json(
+    request: Request,
+    image: UploadFile = File(...),
+    application_json: str = Form(...),
+    extractor: LabelExtractor = Depends(get_extractor),
+) -> HTMLResponse:
+    """Verify a single label with the expected data supplied as JSON.
+
+    The JSON body must validate against `ApplicationData`. The image is
+    still a multipart upload. Same downstream flow as `/verify`; surface
+    JSON-parse and Pydantic validation errors as a graceful _error_panel
+    fragment rather than a raw 400/422 (HTMX would otherwise swap the
+    JSON-detail blob into the result panel)."""
+    image_bytes = await _read_image(image)
+
+    try:
+        payload = json.loads(application_json)
+    except json.JSONDecodeError as exc:
+        return _error_fragment(
+            request,
+            "Could not parse application JSON",
+            f"JSON parse error: {exc.msg} (line {exc.lineno}, col {exc.colno}).",
+        )
+
+    try:
+        app_data = ApplicationData.model_validate(payload)
+    except ValueError as exc:
+        return _error_fragment(
+            request,
+            "Application data failed validation",
+            str(exc),
+        )
+
+    mime = _mime_from_upload(image)
+    return await _run_verification(
+        request=request,
+        image_bytes=image_bytes,
+        mime=mime,
+        app_data=app_data,
+        extractor=extractor,
     )
 
 
