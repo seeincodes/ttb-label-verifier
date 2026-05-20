@@ -28,7 +28,7 @@ The deployed app exposes three preloaded samples that exercise the full flow wit
 
 <!-- TODO: insert deployed-URL link + GIF for reviewers behind a firewall -->
 
-The samples are wired in `app/main.py:365` and the asset pairs (`{name}.json`, `{name}.png`) live in `sample_data/`.
+The samples are wired in `app/main.py — `sample()` handler` and the asset pairs (`{name}.json`, `{name}.png`) live in `sample_data/`.
 
 ---
 
@@ -274,7 +274,7 @@ Every signal from the four discovery interviews (Sarah Chen, Dave Morrison, Jenn
 | Signal | Source | Concrete design decision in the code |
 |---|---|---|
 | **"≤5 s response per label or nobody uses it"** | Sarah Chen | Default extractor is Gemini 2.5 Flash (~1.5 s avg, the only commercial vision model that comfortably fits the 5 s bar). `EXTRACTION_TIMEOUT_SECONDS=12` (`app/config.py:24`) is just above the SDK's 10 s floor. LRU cache (`app/cache.py`) makes the second pass on the same image return in well under 100 ms. SSE in the batch flow shows progress not a spinner. |
-| **"My 73-year-old mother could figure it out"** | Sarah Chen | One primary action per screen. Form fits one viewport. Three preloaded sample buttons on the homepage (`/sample/spirits-pass`, `/sample/abv-fail`, `/sample/warning-fail`, wired at `app/main.py:365`) so the reviewer clicks once and sees the full flow without uploading. Alpine.js image preview before submit; no nested menus. |
+| **"My 73-year-old mother could figure it out"** | Sarah Chen | One primary action per screen. Form fits one viewport. Three preloaded sample buttons on the homepage (`/sample/spirits-pass`, `/sample/abv-fail`, `/sample/warning-fail`, wired at `app/main.py — `sample()` handler`) so the reviewer clicks once and sees the full flow without uploading. Alpine.js image preview before submit; no nested menus. |
 | **Batch upload of 200–300 labels** | Sarah Chen citing Janet (Seattle field office), reinforced by Jenny Park | First-class batch flow (`/batch`) with drag-and-drop dropzone, SSE-streamed per-row results, `asyncio.Semaphore(BATCH_CONCURRENCY=5)` concurrency limit, filter chips (All / Failures / Warnings / OK), and CSV export. |
 | **"STONE'S THROW" vs "Stone's Throw" must silently match** | Dave Morrison | `normalize_text` deletes apostrophes (not replaces with space) so possessives collapse to one token (`app/verifier/normalize.py:22`); `rapidfuzz.token_sort_ratio` is case- and word-order-insensitive; threshold 95 / 80 / <80 (`app/verifier/rules.py:104-105`) — the 95 cutoff is calibrated to exactly this example from the discovery interview. |
 | **"Old Tom Distillery LLC" vs "Old Tom Distillery" must match** | Dave Morrison | `strip_corporate_suffixes` runs *before* the fuzzy match for bottler-name comparison (`app/verifier/rules.py:393-395`). |
