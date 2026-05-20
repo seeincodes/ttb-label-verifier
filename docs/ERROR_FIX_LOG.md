@@ -51,6 +51,14 @@ Suggested category prefixes for this project:
 
 ## Log
 
+### 2026-05-20 — [OPENAI] Automatic fallback to Gemini confirmed end-to-end
+
+- **Symptom:** smoke test with `EXTRACTOR_PROVIDER=openai` recovers on `insufficient_quota` 429 by falling back to the configured Gemini secondary, with `audit.fallback_used=True` and `audit.provider_used="GeminiExtractor"`.
+- **Context:** `EXTRACTOR_PROVIDER=openai python scripts/smoke_extractor.py` after task group 10. Total latency 7153 ms (the OpenAI call timed out / 429'd, the wrapper retried with Gemini which returned in ~6.5 s).
+- **Root cause:** working as designed. The OpenAI account has no available quota (documented 2026-05-19 entry below), so every primary call goes terminal. The `FallbackExtractor` (`app/extractors/__init__.py`) wraps the primary in a retry-once-on-ExtractorError pattern; the secondary (`GeminiExtractor`) succeeded.
+- **Fix:** None needed. This is the MVP7 happy-path-with-degraded-primary. The audit metadata flows into `VerificationResult.fallback_used`, which surfaces "fallback used" in the result-panel header.
+- **Prevention:** Tests `tests/test_extractor_factory.py::TestFallbackExtractor` pin the wrapper's behavior under stub failures; the live smoke (this entry) confirms the wiring against real APIs.
+
 ### 2026-05-19 — [GEMINI] Transient 503 UNAVAILABLE on `gemini-2.5-flash`
 
 - **Error:** `google.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'}}`

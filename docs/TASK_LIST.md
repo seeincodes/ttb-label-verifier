@@ -83,10 +83,10 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 10. OpenAI fallback + model swap [MVP7]
 
-- [ ] `app/extractors/openai.py` — `OpenAIExtractor` via the `openai` SDK using `OPENAI_MODEL`; same prompt + same JSON contract.
-- [ ] Factory in `app/extractors/__init__.py` selects on `EXTRACTOR_PROVIDER`.
-- [ ] Automatic fallback: on Gemini timeout / 5xx, retry once with OpenAI; result records `fallback_used: true` for the audit panel.
-- [ ] Manual smoke test with `EXTRACTOR_PROVIDER=openai`.
+- [x] `app/extractors/openai.py` — `OpenAIExtractor` via the `openai` SDK using `OPENAI_MODEL`; same prompt + same JSON contract.
+- [x] Factory in `app/extractors/__init__.py` selects on `EXTRACTOR_PROVIDER`.
+- [x] Automatic fallback: on Gemini timeout / 5xx, retry once with OpenAI; result records `fallback_used: true` for the audit panel.
+- [x] Manual smoke test with `EXTRACTOR_PROVIDER=openai`. (Live: OpenAI 429 insufficient_quota → automatic fallback to Gemini succeeded; audit.fallback_used=True; see ERROR_FIX_LOG 2026-05-20.)
 
 ### 11. Eval harness [MVP13]
 

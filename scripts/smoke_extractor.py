@@ -38,7 +38,8 @@ from pathlib import Path
 # Allow `python scripts/smoke_extractor.py` from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.extractors.gemini import ExtractorError, GeminiExtractor  # noqa: E402
+from app.extractors import build_extractor  # noqa: E402
+from app.extractors.gemini import ExtractorError  # noqa: E402
 from app.models import BeverageType  # noqa: E402
 
 # 32x32 white PNG, base64-encoded for portability (same as smoke_gemini.py).
@@ -83,18 +84,26 @@ async def main() -> int:
     print(f"Beverage:     {beverage.value}")
 
     try:
-        extractor = GeminiExtractor.from_settings()
+        extractor = build_extractor()
     except ExtractorError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
-    print(f"Model:        {extractor.model}")
-    print(f"Timeout:      {extractor.timeout_seconds}s")
+    # FallbackExtractor exposes .primary; bare extractors expose .model directly.
+    inner = getattr(extractor, "primary", extractor)
+    print(f"Primary:      {inner.__class__.__name__} ({getattr(inner, 'model', '?')})")
+    secondary = getattr(extractor, "secondary", None)
+    if secondary is not None:
+        print(
+            f"Secondary:    {secondary.__class__.__name__} "
+            f"({getattr(secondary, 'model', '?')})  (used on primary ExtractorError)"
+        )
+    print(f"Timeout:      {getattr(inner, 'timeout_seconds', '?')}s")
     print()
 
     started = time.perf_counter()
     try:
-        result = await extractor.extract(image_bytes, beverage, mime)
+        result, audit = await extractor.extract_with_audit(image_bytes, beverage, mime)
     except ExtractorError as exc:
         elapsed_ms = (time.perf_counter() - started) * 1000
         print(f"Latency:      {elapsed_ms:.0f}ms")
@@ -106,8 +115,9 @@ async def main() -> int:
 
     elapsed_ms = (time.perf_counter() - started) * 1000
     print(f"Latency:      {elapsed_ms:.0f}ms")
+    print(f"Provider:     {audit.provider_used}  (fallback={audit.fallback_used})")
     print()
-    print("OK — Gemini reachable, response matched LabelData (§5.5).")
+    print(f"OK — {audit.provider_used} reachable, response matched LabelData (§5.5).")
     print()
     print(json.dumps(result.model_dump(), indent=2))
     return 0

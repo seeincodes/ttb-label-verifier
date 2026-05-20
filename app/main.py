@@ -227,10 +227,12 @@ async def _run_verification(
         label_data = cached
         latency_ms = 0
         cache_hit = True
+        fallback_used = False
+        provider_used = settings.extractor_provider
     else:
         started = time.perf_counter()
         try:
-            label_data = await extractor.extract(
+            label_data, audit = await extractor.extract_with_audit(
                 image_bytes=image_bytes,
                 beverage_type=app_data.beverage_type,
                 mime_type=mime,
@@ -248,6 +250,14 @@ async def _run_verification(
         latency_ms = int((time.perf_counter() - started) * 1000)
         cache.put(cache_key, label_data)
         cache_hit = False
+        fallback_used = audit.fallback_used
+        # provider_used surfaces "OpenAIExtractor" / "GeminiExtractor" — the
+        # audit panel header is friendlier with the configured-provider
+        # name, but on fallback we want to be honest about which one
+        # actually produced the result.
+        provider_used = (
+            audit.provider_used if fallback_used else settings.extractor_provider
+        )
 
     field_verdicts = verify_label(label_data, app_data)
     overall = Verdict.worst_of(fv.verdict for fv in field_verdicts.values())
@@ -257,8 +267,8 @@ async def _run_verification(
         field_verdicts=field_verdicts,
         raw_extraction=label_data,
         cache_hit=cache_hit,
-        fallback_used=False,
-        extractor_used=settings.extractor_provider,
+        fallback_used=fallback_used,
+        extractor_used=provider_used,
         latency_ms=latency_ms,
     )
 

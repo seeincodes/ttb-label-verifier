@@ -5,15 +5,29 @@ Every concrete provider (Gemini, OpenAI, future Claude / Bedrock) implements
 verifier therefore never reaches into provider-specific JSON; switching
 providers is a one-line factory change.
 
-The ABC is intentionally tiny (~30 lines). The writeup §10 calls out
-rolling this rather than depending on LiteLLM / LangChain as deliberate
-architectural signal — keep it that way.
+The ABC is intentionally tiny. The writeup §10 calls out rolling this
+rather than depending on LiteLLM / LangChain as deliberate architectural
+signal — keep it that way.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from app.models import BeverageType, LabelData
+
+
+@dataclass(frozen=True)
+class ExtractionAudit:
+    """Side-channel info from an extraction call.
+
+    Most extractors return `fallback_used=False, provider=<their name>`.
+    The `FallbackExtractor` wrapper uses this to surface "primary failed
+    and we recovered" to the caller without breaking the `extract` ABC.
+    """
+
+    fallback_used: bool
+    provider_used: str
 
 
 class LabelExtractor(ABC):
@@ -46,3 +60,26 @@ class LabelExtractor(ABC):
             required field at `low` confidence to verdict ERROR rather
             than risking a false PASS / FAIL.
         """
+
+    async def extract_with_audit(
+        self,
+        image_bytes: bytes,
+        beverage_type: BeverageType,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[LabelData, ExtractionAudit]:
+        """Extract and return audit metadata alongside.
+
+        Default implementation calls `extract` and reports
+        `fallback_used=False, provider_used=<class name>`. The
+        `FallbackExtractor` overrides this to surface when it had to
+        retry with the secondary provider.
+
+        Routes that care about fallback (the result-panel header in
+        single-label, the result row in batch) call this; callers that
+        don't care use `extract` directly.
+        """
+        label = await self.extract(image_bytes, beverage_type, mime_type)
+        return label, ExtractionAudit(
+            fallback_used=False,
+            provider_used=self.__class__.__name__,
+        )

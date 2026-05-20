@@ -16,11 +16,11 @@ from app.extractors.base import LabelExtractor
 def get_extractor() -> LabelExtractor:
     """Return the production `LabelExtractor`.
 
-    Wired to Gemini per the locked default `EXTRACTOR_PROVIDER=gemini`.
-    Task group 10 will add an OpenAI branch + fallback. Cached so the
-    SDK client is built once per process.
+    Built via the factory in `app.extractors.build_extractor()` which
+    selects on `EXTRACTOR_PROVIDER` and wraps the primary in a
+    `FallbackExtractor` so a transient primary failure retries once with
+    the secondary. Cached so the SDK client is built once per process.
     """
-    # Import here to keep route imports cheap when tests override the dep.
-    from app.extractors.gemini import GeminiExtractor
+    from app.extractors import build_extractor
 
-    return GeminiExtractor.from_settings()
+    return build_extractor()
