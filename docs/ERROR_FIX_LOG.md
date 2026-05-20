@@ -51,7 +51,13 @@ Suggested category prefixes for this project:
 
 ## Log
 
-*No errors logged yet.*
+### 2026-05-19 — [OPENAI] Smoke test fails with 429 `insufficient_quota`
+
+- **Error:** `openai.RateLimitError: Error code: 429 - {'error': {'message': 'You exceeded your current quota...', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}}`
+- **Context:** `python scripts/smoke_openai.py` against gpt-4o with a synthetic 32x32 PNG. The SDK call itself is shaped correctly; the failure is account-level, not code-level.
+- **Root cause:** the `OPENAI_API_KEY` in `.env` is valid but the OpenAI account has no available quota / billing is not set up. OpenAI returns 429 with type `insufficient_quota` rather than 402, which is non-obvious.
+- **Fix:** pending user action — either (a) add billing to the OpenAI account so the smoke test can complete, (b) get a different key, or (c) defer OpenAI work and rely on Gemini-only for now. The extractor abstraction (task group 3) and fallback logic (task group 10) still need an OpenAI implementation to satisfy [MVP7]; without a working key these will be untestable end-to-end.
+- **Prevention:** smoke script now catches `RateLimitError` and exits with a clear "billing issue, not a code bug" message instead of a raw traceback. The eval harness and the production fallback path should distinguish "insufficient_quota" 429s (terminal) from rate-limit 429s (retryable).
 
 ## Common Issues to Watch For
 
