@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}TTB Label Verification{% endblock %}</title>
+
+    <!-- HTMX 1.9.x — form-driven HTML-fragment swaps + SSE -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
+
+    <!-- Alpine.js 3.x — dropzone, image preview, small toggles -->
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+    <!-- Tailwind via Play CDN — prototype-only; production would use the CLI build -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <a href="/" class="text-lg font-semibold tracking-tight">TTB Label Verification</a>
+        <nav class="flex items-center gap-4 text-sm text-slate-600">
+          <a href="/" class="hover:text-slate-900">Single label</a>
+          <a href="/batch" class="hover:text-slate-900">Batch</a>
+          <a href="/health" class="hover:text-slate-900">Health</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-6 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mx-auto max-w-5xl px-6 py-6 text-xs text-slate-500">
+      Prototype — no data is persisted. Verdicts cite 27 CFR sections inline.
+    </footer>
+  </body>
+</html>

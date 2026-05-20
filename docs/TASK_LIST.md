@@ -11,7 +11,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [x] `app/config.py` — `Settings` class via `pydantic-settings` reading from `.env`.
 - [x] `.env.example` mirroring `.env` (no secret values).
 - [x] `Makefile` with `dev`, `eval`, `test`, `deploy` targets.
-- [ ] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
+- [x] FastAPI `/health` route + base Jinja2 template loading HTMX, Alpine.js, Tailwind via CDN.
 - [ ] Gemini API smoke test (one real call against a sample image, JSON back).
 - [ ] OpenAI API smoke test (same shape, same image).
 - [ ] Render service skeleton (`render.yaml` or service config) so deploy is wired before features land.
