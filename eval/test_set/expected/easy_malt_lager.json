@@ -1,0 +1,15 @@
+{
+  "bucket": "easy",
+  "expected_overall": "pass",
+  "notes": "Clean malt beverage PASS — class_type is optional for malt per §5.6 but supplied here; ABV ±0.3pp per 27 CFR 7.65(c); 12 fl oz net contents normalises against itself.",
+  "application": {
+    "beverage_type":        "malt_beverage",
+    "brand_name":           "Northwoods Lager",
+    "class_type":           "Lager Beer",
+    "alcohol_content_pct":  4.8,
+    "net_contents":         "12 fl oz",
+    "bottler_name":         "Northwoods Brewing Co.",
+    "bottler_address":      "789 Hop Way, Bend, OR 97701",
+    "is_import":            false
+  }
+}

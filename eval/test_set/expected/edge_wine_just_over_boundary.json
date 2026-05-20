@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "pass",
+  "notes": "Fortified wine at 16.5% — above the 14% boundary so the strict ±1.0pp band applies per 27 CFR 4.36. Application matches at 16.5% so PASS regardless of band. Demonstrates that the >14 tolerance branch executes for high-ABV wine without spuriously failing.",
+  "application": {
+    "beverage_type":        "wine",
+    "brand_name":           "Highland Reserve",
+    "class_type":           "Fortified Wine",
+    "alcohol_content_pct":  16.5,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Highland Vintners LLC",
+    "bottler_address":      "1 Highland Way, Sonoma, CA",
+    "is_import":            false
+  }
+}

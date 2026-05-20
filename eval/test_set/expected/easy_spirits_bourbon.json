@@ -1,0 +1,15 @@
+{
+  "bucket": "easy",
+  "expected_overall": "pass",
+  "notes": "Clean spirits PASS — every checklist field matches the application 1:1; LLC suffix on bottler is the cosmetic-pass path (27 CFR 5.36).",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

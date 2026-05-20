@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "warn",
+  "notes": "Brand 'Old Tom Distillers' on the label vs application's 'Old Tom Distillery' — same root but materially different word, fuzzy token-sort score lands in the 80–94 borderline band per presearch §5.4. Verifier surfaces WARN with the score so a human reviews rather than silently passing or failing. Cites 27 CFR 5.32.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

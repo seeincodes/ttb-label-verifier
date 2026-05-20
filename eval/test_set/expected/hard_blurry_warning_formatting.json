@@ -1,0 +1,15 @@
+{
+  "bucket": "hard",
+  "expected_overall": "error",
+  "notes": "Warning area photographed at low resolution — formatting yes/no answers come back at low confidence. Per check_warning_formatting (27 CFR 16.22): low confidence yields per-field ERROR rather than asserting PASS/FAIL on formatting we couldn't read.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

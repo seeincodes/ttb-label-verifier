@@ -1,0 +1,15 @@
+{
+  "bucket": "violations",
+  "expected_overall": "fail",
+  "notes": "Spirits labeled 48.5% vs application's 45.0% — delta 3.5pp, well past 2× the ±0.3pp spirits tolerance per 27 CFR 5.65(b). The verifier surfaces the delta and the citation in the FAIL reason. (Inside the tolerance: PASS; 1–2× tolerance: WARN; >2× tolerance: FAIL — this is well past WARN.)",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

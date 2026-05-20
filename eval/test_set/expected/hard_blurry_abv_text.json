@@ -1,0 +1,15 @@
+{
+  "bucket": "hard",
+  "expected_overall": "error",
+  "notes": "ABV area unreadable — numeric and text both at low confidence with value=null. ABV is a required field for spirits (27 CFR 5.65(b)); confidence gate yields per-field ERROR and overall ERROR rather than guess. Tests the path where the model honored the prompt's 'null + low rather than guess' instruction.",
+  "application": {
+    "beverage_type":        "distilled_spirits",
+    "brand_name":           "Old Tom Distillery",
+    "class_type":           "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content_pct":  45.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Old Tom Distillery LLC",
+    "bottler_address":      "123 Distillery Rd, Frankfort, KY 40601",
+    "is_import":            false
+  }
+}

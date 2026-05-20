@@ -1,0 +1,20 @@
+{
+  "brand_name":           {"value": "GLENMOOR HIGHLAND", "confidence": "high"},
+  "class_type":           {"value": "Single Malt Scotch Whisky", "confidence": "high"},
+  "alcohol_content_pct":  {"value": 43.0, "confidence": "high"},
+  "alcohol_content_text": {"value": "43% Alc./Vol. (86 Proof)", "confidence": "high"},
+  "net_contents":         {"value": "750 mL", "confidence": "high"},
+  "bottler_name":         {"value": "Glenmoor Distillers Ltd", "confidence": "high"},
+  "bottler_address":      {"value": "12 Glen Rd, Speyside, Scotland", "confidence": "high"},
+  "country_of_origin":    {"value": "Scotland", "confidence": "high"},
+  "government_warning_text": {
+    "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "confidence": "high"
+  },
+  "government_warning_formatting": {
+    "caps_correct": true,
+    "bold_correct": true,
+    "continuous":   true,
+    "confidence":   "high"
+  }
+}

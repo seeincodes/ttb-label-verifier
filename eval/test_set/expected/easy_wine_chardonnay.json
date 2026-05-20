@@ -1,0 +1,15 @@
+{
+  "bucket": "easy",
+  "expected_overall": "pass",
+  "notes": "Clean wine PASS — 13.5% ABV is within the ±1.5pp ≤14% wine band per 27 CFR 4.36. class_type required for wine per §5.6.",
+  "application": {
+    "beverage_type":        "wine",
+    "brand_name":           "Valley Oak Winery",
+    "class_type":           "Chardonnay",
+    "alcohol_content_pct":  13.5,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Valley Oak Winery Inc.",
+    "bottler_address":      "456 Vineyard Ln, Napa, CA 94558",
+    "is_import":            false
+  }
+}

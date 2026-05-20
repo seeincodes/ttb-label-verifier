@@ -1,0 +1,15 @@
+{
+  "bucket": "hard",
+  "expected_overall": "warn",
+  "notes": "Malt beverage with class/type optional per §5.6 but the application supplied one. Extraction returned low confidence on class/type — the verifier surfaces an 'unverifiable' WARN rather than ERROR (would force a reshoot for a field the regulator does not require for malt). Cites 27 CFR 7.22.",
+  "application": {
+    "beverage_type":        "malt_beverage",
+    "brand_name":           "Northwoods Lager",
+    "class_type":           "Lager Beer",
+    "alcohol_content_pct":  4.8,
+    "net_contents":         "12 fl oz",
+    "bottler_name":         "Northwoods Brewing Co.",
+    "bottler_address":      "789 Hop Way, Bend, OR 97701",
+    "is_import":            false
+  }
+}
