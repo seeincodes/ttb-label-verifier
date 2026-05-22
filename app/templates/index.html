@@ -51,13 +51,19 @@
                       file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-4 file:py-2
                       file:text-sm file:font-medium file:text-white hover:file:bg-slate-700" />
 
-        <!-- Extraction-in-progress indicator -->
-        <p x-show="extracting" class="mt-2 inline-flex items-center gap-2 text-xs text-slate-600" role="status" aria-live="polite">
+        <!-- Extraction-in-progress indicator. The fetch runs in the
+             background — the form is fully usable while we wait. -->
+        <p x-show="extracting"
+           class="mt-2 inline-flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 ring-1 ring-slate-200"
+           role="status" aria-live="polite">
           <svg class="h-3 w-3 animate-spin text-slate-700" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
           </svg>
-          Reading the label to prefill the form&hellip;
+          <span>
+            Reading the label in the background to prefill empty fields&hellip;
+            (<span x-text="elapsedSeconds"></span>s elapsed). You can start typing now — we won&rsquo;t overwrite what you type.
+          </span>
         </p>
         <p x-show="prefillSummary" x-text="prefillSummary"
            class="mt-2 text-xs text-amber-700"></p>
@@ -76,7 +82,7 @@
         <label for="beverage_type" class="block text-sm font-medium text-slate-700">Beverage type</label>
         <select name="beverage_type" id="beverage_type" required
                 x-model="fields.beverage_type"
-                @input="clearPrefill('beverage_type')"
+                @input="noteAgentTyped('beverage_type')"
                 :class="prefillClass('beverage_type', 'mt-2 block w-full rounded-md border bg-white px-3 py-2 text-sm')">
           <option value="distilled_spirits">Distilled spirits (whiskey, vodka, gin&hellip;)</option>
           <option value="wine">Wine</option>
@@ -94,7 +100,7 @@
           <input type="text" name="brand_name" id="brand_name" required
                  placeholder="Old Tom Distillery"
                  x-model="fields.brand_name"
-                 @input="clearPrefill('brand_name')"
+                 @input="noteAgentTyped('brand_name')"
                  :class="prefillClass('brand_name', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
         <div>
@@ -104,7 +110,7 @@
           <input type="text" name="class_type" id="class_type"
                  placeholder="Kentucky Straight Bourbon Whiskey"
                  x-model="fields.class_type"
-                 @input="clearPrefill('class_type')"
+                 @input="noteAgentTyped('class_type')"
                  :class="prefillClass('class_type', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
         <div>
@@ -115,7 +121,7 @@
                  name="alcohol_content_pct" id="alcohol_content_pct"
                  placeholder="45.0"
                  x-model="fields.alcohol_content_pct"
-                 @input="clearPrefill('alcohol_content_pct')"
+                 @input="noteAgentTyped('alcohol_content_pct')"
                  :class="prefillClass('alcohol_content_pct', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
         <div>
@@ -125,7 +131,7 @@
           <input type="text" name="net_contents" id="net_contents" required
                  placeholder="750 mL"
                  x-model="fields.net_contents"
-                 @input="clearPrefill('net_contents')"
+                 @input="noteAgentTyped('net_contents')"
                  :class="prefillClass('net_contents', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
         <div>
@@ -135,7 +141,7 @@
           <input type="text" name="bottler_name" id="bottler_name" required
                  placeholder="Old Tom Distillery LLC"
                  x-model="fields.bottler_name"
-                 @input="clearPrefill('bottler_name')"
+                 @input="noteAgentTyped('bottler_name')"
                  :class="prefillClass('bottler_name', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
         <div>
@@ -145,7 +151,7 @@
           <input type="text" name="bottler_address" id="bottler_address" required
                  placeholder="123 Distillery Rd, Frankfort, KY"
                  x-model="fields.bottler_address"
-                 @input="clearPrefill('bottler_address')"
+                 @input="noteAgentTyped('bottler_address')"
                  :class="prefillClass('bottler_address', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
       </div>
@@ -155,7 +161,7 @@
         <div class="flex items-center gap-2 pt-6 sm:pt-0">
           <input type="checkbox" name="is_import" id="is_import" value="true"
                  x-model="fields.is_import"
-                 @change="clearPrefill('is_import'); clearPrefill('country_of_origin')"
+                 @change="noteAgentTyped('is_import'); noteAgentTyped('country_of_origin')"
                  class="h-4 w-4 rounded border-slate-300 text-slate-800" />
           <label for="is_import" class="text-sm font-medium text-slate-700">
             This is an imported label
@@ -170,7 +176,7 @@
           <input type="text" name="country_of_origin" id="country_of_origin"
                  placeholder="Scotland"
                  x-model="fields.country_of_origin"
-                 @input="clearPrefill('country_of_origin')"
+                 @input="noteAgentTyped('country_of_origin')"
                  :class="prefillClass('country_of_origin', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
         </div>
       </div>
@@ -198,28 +204,41 @@
 
   <script>
     // Alpine component for the verify form. State:
-    //   fields        — bound to every input via x-model so we can prefill them
-    //   prefilled     — object of {fieldName: true} for inputs the model
-    //                   suggested; the ring-amber styling + "(suggested)" label
-    //                   key off this. Cleared on first edit so the agent's
-    //                   confirmed value is visually distinct from the raw guess.
-    //   extracting    — spinner toggle while POST /extract is in flight
-    //   prefillSummary — small text below the file input listing what got
-    //                    auto-filled (transparency about what the model did)
-    //   prefillError  — actionable text if /extract fails (503, quota, etc.)
+    //   fields           — bound to every input via x-model so we can prefill them
+    //   prefilled        — object of {fieldName: true} for inputs the model
+    //                      suggested; the ring-amber styling + "(suggested)" label
+    //                      key off this. Cleared on first edit so the agent's
+    //                      confirmed value is visually distinct from the raw guess.
+    //   extracting       — true while POST /extract is in flight
+    //   elapsedSeconds   — wall-clock seconds since the extract call started,
+    //                      ticked once per second by an interval. Gives the agent
+    //                      a "still alive" signal when Gemini takes 7–9s.
+    //   prefillSummary   — small text below the file input listing what got
+    //                      auto-filled (transparency about what the model did)
+    //   prefillError     — actionable text if /extract fails (503, quota, etc.)
+    //   _agentTypedSinceUpload — set of field names the agent typed into during
+    //                            the current extract call's lifetime. Used by
+    //                            applyPrefill to never overwrite human input
+    //                            (the two-source comparison story: agent typing
+    //                            is the COLA truth, not a draft to be replaced).
     //
     // Design: the model's read is *only* a suggestion. The two-source
     // comparison (label-extracted vs COLA-application) is what gives the
     // verifier its meaning; the prefill removes typing, not the human
-    // judgment. The amber "(suggested — confirm vs application)" labels
-    // and the ring-amber-300 input styling exist to nudge that judgment.
+    // judgment. Critically: /extract runs in the BACKGROUND — onPick fires
+    // the fetch without awaiting it so the agent can start typing
+    // immediately. Real Gemini latency is 7–9s; blocking the form on that
+    // would feel broken even though it's the spec'd 5s budget.
     function verifyForm() {
       return {
         previewUrl: null,
         extracting: false,
+        elapsedSeconds: 0,
+        _elapsedTimer: null,
         prefillSummary: '',
         prefillError: '',
         prefilled: {},
+        _agentTypedSinceUpload: {},
         fields: {
           beverage_type: 'distilled_spirits',
           brand_name: '',
@@ -232,17 +251,31 @@
           country_of_origin: '',
         },
 
-        async onPick (e) {
+        onPick (e) {
           const file = e.target.files && e.target.files[0];
           this.previewUrl = file ? URL.createObjectURL(file) : null;
           if (!file) return;
-          await this.extract(file);
+          // Fire extract in the background — DO NOT await. The agent can
+          // start typing immediately while Gemini works (typical 7–9s).
+          this._agentTypedSinceUpload = {};
+          this.extract(file);
+        },
+
+        // Called from each input's @input handler. Records that the
+        // agent typed into this field so a late-arriving prefill never
+        // overwrites their work.
+        noteAgentTyped (name) {
+          this._agentTypedSinceUpload[name] = true;
+          this.clearPrefill(name);
         },
 
         async extract (file) {
           this.extracting = true;
           this.prefillError = '';
           this.prefillSummary = '';
+          this.elapsedSeconds = 0;
+          if (this._elapsedTimer) clearInterval(this._elapsedTimer);
+          this._elapsedTimer = setInterval(() => { this.elapsedSeconds += 1; }, 1000);
           try {
             const fd = new FormData();
             fd.append('image', file, file.name);
@@ -260,25 +293,42 @@
               + '. You can still fill the form manually.';
           } finally {
             this.extracting = false;
+            if (this._elapsedTimer) {
+              clearInterval(this._elapsedTimer);
+              this._elapsedTimer = null;
+            }
           }
         },
 
         applyPrefill (payload) {
+          // Skip any field the agent has already typed into during the
+          // current upload — their input is the COLA truth, the model's
+          // read is just a suggestion.
           const set = {};
           const filled = [];
+          const skipped = [];
           for (const [key, value] of Object.entries(payload)) {
             if (value === null || value === undefined || value === '') continue;
             if (!(key in this.fields)) continue;
+            if (this._agentTypedSinceUpload[key]) { skipped.push(key); continue; }
             this.fields[key] = value;
             set[key] = true;
             filled.push(key);
           }
           this.prefilled = set;
-          this.prefillSummary = filled.length
-            ? 'Prefilled ' + filled.length + ' field' + (filled.length === 1 ? '' : 's')
+          if (filled.length) {
+            let msg = 'Prefilled ' + filled.length + ' field' + (filled.length === 1 ? '' : 's')
               + ' from the label. Review each row against the application before verifying;'
-              + ' yellow-highlighted fields are the model\'s read, not the COLA truth.'
-            : 'The model could not read this label confidently. Please fill the form manually.';
+              + ' yellow-highlighted fields are the model\'s read, not the COLA truth.';
+            if (skipped.length) {
+              msg += ' (Kept your typed values for: ' + skipped.join(', ') + '.)';
+            }
+            this.prefillSummary = msg;
+          } else if (skipped.length) {
+            this.prefillSummary = 'You already filled every field the model could read — kept your values.';
+          } else {
+            this.prefillSummary = 'The model could not read this label confidently. Please fill the form manually.';
+          }
         },
 
         clearPrefill (name) {
@@ -290,6 +340,12 @@
           this.prefillSummary = '';
           this.prefillError = '';
           this.previewUrl = null;
+          this._agentTypedSinceUpload = {};
+          this.elapsedSeconds = 0;
+          if (this._elapsedTimer) {
+            clearInterval(this._elapsedTimer);
+            this._elapsedTimer = null;
+          }
         },
 
         prefillClass (name, base) {

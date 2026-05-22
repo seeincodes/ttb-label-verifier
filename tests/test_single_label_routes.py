@@ -201,6 +201,47 @@ class TestGetIndex:
         assert "amber-300" in body or "amber-50" in body
         assert "suggested" in body.lower()
 
+    def test_prefill_runs_in_background_not_blocking(self):
+        """Gemini latency on real labels is 7–9s; 'Reading the label…' as a
+        modal-feeling spinner makes the agent think they have to wait. The
+        UI must signal that the form is usable RIGHT NOW and prefill is
+        background work — onPick must not await the fetch, and the progress
+        message must describe a background activity, not a wait gate."""
+        from app.main import app
+
+        body = TestClient(app).get("/").text
+        # onPick fires the extract call without awaiting it — the agent
+        # can start typing while Gemini works. The current scope binds
+        # the result via .then() / no-await; either form is acceptable
+        # as long as onPick isn't a single `await this.extract(file)` line.
+        # We can't run JS in pytest, so pin the textual affordance:
+        body_lower = body.lower()
+        # The progress message must NOT phrase the wait as gated — phrases
+        # like "please wait" or "loading…" are anti-patterns here. The new
+        # wording explicitly says the agent can keep typing.
+        assert (
+            "you can start typing" in body_lower
+            or "while we read" in body_lower
+            or "background" in body_lower
+        ), "progress message must signal that prefill is background work"
+
+    def test_elapsed_time_counter_visible_during_prefill(self):
+        """7–9s of static spinner feels broken. An elapsed-time counter
+        gives the agent a signal that the call is still alive AND lets
+        them decide whether to wait for the prefill or push on without it."""
+        from app.main import app
+
+        body = TestClient(app).get("/").text
+        # Either a literal "elapsed" word in the UI strings, or an
+        # `elapsedSeconds` reactive in the Alpine component, or a
+        # `setInterval` driving a per-second tick — any of these counts
+        # as the affordance.
+        assert (
+            "elapsed" in body.lower()
+            or "elapsedseconds" in body.lower()
+            or "setinterval" in body.lower()
+        ), "elapsed-time counter affordance missing from the prefill UI"
+
 
 # ---------------------------------------------------------------------------
 # POST /verify — full round-trip with stubbed extractor
