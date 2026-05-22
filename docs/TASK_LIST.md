@@ -137,7 +137,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [ ] **[STR3]** A / B model comparison UI (Gemini + OpenAI side by side).
 - [ ] **[STR4]** Keyboard shortcuts (Jenny's power-user case).
 - [ ] **[STR5]** In-app eval dashboard.
-- [ ] **[STR6]** Wine class-boundary edge case (14.5% wine labeled "table wine" — class designation FAIL even when numeric tolerance technically passes).
+- [x] **[STR6]** Wine class-boundary edge case (14.5% wine labeled "table wine" — class designation FAIL even when numeric tolerance technically passes). `check_class_type` runs the §4.21 class-vs-ABV consistency rule (`_wine_class_boundary_check`); covered by 9 tests in `tests/test_rules.py::TestWineClassBoundary` + 1 orchestrator test, plus eval fixture `edge_table_wine_above_14pct` (FAIL).
 
 ### 16. Submission
 

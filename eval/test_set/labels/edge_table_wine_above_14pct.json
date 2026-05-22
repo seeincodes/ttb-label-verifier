@@ -1,0 +1,20 @@
+{
+  "brand_name":           {"value": "Valley Springs", "confidence": "high"},
+  "class_type":           {"value": "Table Wine", "confidence": "high"},
+  "alcohol_content_pct":  {"value": 14.5, "confidence": "high"},
+  "alcohol_content_text": {"value": "14.5% Alc./Vol.", "confidence": "high"},
+  "net_contents":         {"value": "750 mL", "confidence": "high"},
+  "bottler_name":         {"value": "Valley Springs Winery", "confidence": "high"},
+  "bottler_address":      {"value": "3120 Vine Trail, St. Helena, CA 94574", "confidence": "high"},
+  "country_of_origin":    {"value": null, "confidence": "high"},
+  "government_warning_text": {
+    "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "confidence": "high"
+  },
+  "government_warning_formatting": {
+    "caps_correct": true,
+    "bold_correct": true,
+    "continuous":   true,
+    "confidence":   "high"
+  }
+}

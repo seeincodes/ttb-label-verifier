@@ -68,11 +68,12 @@ across this bucket.
 | `violations_warning_missing_clause`  | 16.21         | Warning text missing clause (2); text layer FAILs while formatting layer would PASS. |
 | `violations_warning_formatting`      | 16.22         | Warning text canonical but "Government Warning" rendered in title case (caps_correct=false). |
 
-### `edge_cases` (5) — boundary conditions
+### `edge_cases` (6) — boundary conditions
 
 Designed to confirm the verifier handles the §5.4 silent-PASS paths
-correctly (cosmetic difference, unit equivalence, corp suffix) and the
-regulatory tolerance boundaries.
+correctly (cosmetic difference, unit equivalence, corp suffix), the
+regulatory tolerance boundaries, and the §4.21 class-vs-ABV consistency
+rule that catches what tolerance alone misses.
 
 | Fixture                              | Expected verdict | What it tests |
 | ------------------------------------ | ---------------- | ------------- |
@@ -81,6 +82,7 @@ regulatory tolerance boundaries.
 | `edge_wine_just_over_boundary`       | pass             | Fortified wine at 16.5% — exercises the >14 tolerance branch (±1.0pp). |
 | `edge_corp_suffix_variant`           | pass             | Bottler "Stone's Throw Distillery, Inc." vs "...Distillery LLC" + brand "STONE'S THROW" vs "Stone's Throw" — two §5.4 cosmetic paths in one fixture. |
 | `edge_volume_unit_equivalent`        | pass             | Label "0.75 L" vs application "750 mL" — silent-PASS via normalize_volume. |
+| `edge_table_wine_above_14pct`        | fail             | STR6 / 27 CFR 4.21 — 14.5% wine labelled "Table Wine" against a COLA at 13.0%. The numeric ABV is within the ±1.5pp §4.36 tolerance, so an ABV-only verifier would silently PASS. The class-designation rule catches it: §4.21 defines table wine as ≤14% ABV. This is the regulatory subtlety presearch §2 flagged as Dave-Morrison-grade. |
 
 ## Reproducibility
 

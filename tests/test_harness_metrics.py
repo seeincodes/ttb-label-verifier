@@ -169,17 +169,18 @@ class TestHarnessEndToEnd:
             f"{[r.name + ': expected ' + r.expected_overall.value + ' got ' + r.actual_overall.value for r in mismatches]}"
         )
 
-    def test_bucket_distribution_5_per_bucket(self):
-        """20 fixtures = 5 easy + 5 hard + 5 violations + 5 edge_cases per
-        presearch §6.1. Catches a fixture accidentally in the wrong bucket
-        or one being missed."""
+    def test_bucket_distribution_at_least_5_per_bucket(self):
+        """Presearch §6.1 calls for 5 per bucket as the minimum coverage.
+        Buckets may grow over time (e.g. STR6 wine-class-boundary added a
+        6th edge case after the initial 20-fixture lay-down) — invariant
+        is *at least* 5 each, no bucket missing or undersized."""
         from eval.harness import run_fixtures
 
         records = run_fixtures()
         buckets: dict[str, int] = {}
         for r in records:
             buckets[r.bucket] = buckets.get(r.bucket, 0) + 1
-        assert buckets.get("easy") == 5
-        assert buckets.get("hard") == 5
-        assert buckets.get("violations") == 5
-        assert buckets.get("edge_cases") == 5
+        assert buckets.get("easy", 0) >= 5
+        assert buckets.get("hard", 0) >= 5
+        assert buckets.get("violations", 0) >= 5
+        assert buckets.get("edge_cases", 0) >= 5

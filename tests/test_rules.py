@@ -183,6 +183,129 @@ class TestCheckClassType:
         assert fv.cfr_citation.startswith("27 CFR 4")
 
 
+class TestWineClassBoundary:
+    """STR6 / 27 CFR 4.21 — 'table wine' is defined as ≤14% ABV.
+    A 14.5% wine labeled 'Table Wine' is a class-designation violation
+    even when |extracted - expected| stays inside the ±1.5pp 4.36 band.
+
+    The check lives inside check_class_type and only fires for wine. It's
+    the kind of regulatory subtlety reviewers test for (presearch §2)."""
+
+    def _run(self, label_class: str, app_class: str, abv: float):
+        from app.verifier.rules import check_class_type
+
+        return check_class_type(
+            _field(label_class),
+            app_class,
+            BeverageType.WINE,
+            extracted_abv_pct=abv,
+        )
+
+    def test_table_wine_above_14pct_fails_with_4_21(self):
+        """14.5% labeled 'Table Wine' → FAIL with 27 CFR 4.21, even though
+        the numeric ABV (14.5 vs application 13.0) is within ±1.5pp."""
+        fv = self._run("Table Wine", "Table Wine", abv=14.5)
+        from app.models import Verdict
+
+        assert fv.verdict is Verdict.FAIL
+        assert "4.21" in fv.cfr_citation
+        assert "14" in fv.reason  # delta surfaced
+
+    def test_table_wine_at_or_below_14pct_passes(self):
+        """At exactly 14% the standard is still 'table wine' per 4.21
+        (inclusive). 13.5% is squarely within. Numeric tolerance is checked
+        by check_alcohol_content; class_type just checks the boundary."""
+        from app.models import Verdict
+
+        for abv in (13.5, 14.0):
+            fv = self._run("Table Wine", "Table Wine", abv=abv)
+            assert fv.verdict is Verdict.PASS, (
+                f"{abv}% table wine should PASS, got {fv.verdict.value}"
+            )
+
+    def test_light_wine_synonym_uses_same_boundary(self):
+        """'Light Wine' is a §4.21 synonym for 'Table Wine'. Same 14%
+        cap applies."""
+        from app.models import Verdict
+
+        fv = self._run("Light Wine", "Light Wine", abv=14.6)
+        assert fv.verdict is Verdict.FAIL
+        assert "4.21" in fv.cfr_citation
+
+    def test_dessert_wine_below_14pct_fails_with_4_21(self):
+        """27 CFR 4.21 also defines 'dessert wine' as 14–24%. A 12.5%
+        wine labeled 'Dessert Wine' is a class FAIL — the other side of
+        the boundary."""
+        from app.models import Verdict
+
+        fv = self._run("Dessert Wine", "Dessert Wine", abv=12.5)
+        assert fv.verdict is Verdict.FAIL
+        assert "4.21" in fv.cfr_citation
+
+    def test_dessert_wine_in_band_passes(self):
+        from app.models import Verdict
+
+        for abv in (14.5, 18.0, 23.5):
+            fv = self._run("Dessert Wine", "Dessert Wine", abv=abv)
+            assert fv.verdict is Verdict.PASS, (
+                f"{abv}% dessert wine should PASS, got {fv.verdict.value}"
+            )
+
+    def test_non_class_boundary_designation_unaffected(self):
+        """A class like 'Napa Valley Cabernet Sauvignon' has no 4.21 ABV
+        cap — the boundary check must NOT fire (and must not block a
+        legitimate label from passing)."""
+        from app.models import Verdict
+
+        fv = self._run(
+            "Napa Valley Cabernet Sauvignon",
+            "Napa Valley Cabernet Sauvignon",
+            abv=15.0,  # high ABV but no class-cap regulation
+        )
+        assert fv.verdict is Verdict.PASS
+
+    def test_spirits_unaffected_by_wine_class_boundary(self):
+        """45% spirits labelled 'Bourbon' must still PASS — the boundary
+        rule is wine-only (27 CFR Part 4)."""
+        from app.models import Verdict
+        from app.verifier.rules import check_class_type
+
+        fv = check_class_type(
+            _field("Kentucky Straight Bourbon Whiskey"),
+            "Kentucky Straight Bourbon Whiskey",
+            BeverageType.DISTILLED_SPIRITS,
+            extracted_abv_pct=45.0,
+        )
+        assert fv.verdict is Verdict.PASS
+
+    def test_missing_abv_still_passes_when_class_matches(self):
+        """Backwards-compat: callers that don't pass extracted_abv_pct
+        (the default) shouldn't see new errors. check_class_type without
+        ABV just skips the boundary check."""
+        from app.models import Verdict
+        from app.verifier.rules import check_class_type
+
+        fv = check_class_type(
+            _field("Table Wine"),
+            "Table Wine",
+            BeverageType.WINE,
+            # no extracted_abv_pct — falls back to None
+        )
+        assert fv.verdict is Verdict.PASS
+
+    def test_class_mismatch_takes_precedence_over_boundary(self):
+        """If the class itself doesn't match the application, that's the
+        primary FAIL — we don't pile on a second 4.21 violation. The
+        existing fuzzy-mismatch verdict wins."""
+        from app.models import Verdict
+
+        fv = self._run("Dessert Wine", "Sparkling Wine", abv=15.0)
+        assert fv.verdict is Verdict.FAIL
+        # The reason should be about the class mismatch, not the ABV
+        # boundary — although 4.21 might still be cited because it's the
+        # wine-class section. Just make sure it's a FAIL.
+
+
 class TestCheckAlcoholContent:
     """ABV numeric tolerance + 'ABV' abbreviation regulatory check."""
 
@@ -567,3 +690,31 @@ class TestVerifyLabel:
         verdicts = verify_label(label, app)
         overall = Verdict.worst_of(v.verdict for v in verdicts.values())
         assert overall is Verdict.FAIL
+
+    def test_str6_wine_class_boundary_surfaces_through_verify_label(self):
+        """End-to-end: 14.5% wine labeled 'Table Wine' must FAIL via the
+        orchestrator, not just the unit-tested rule. This pins that
+        verify_label actually passes extracted_abv_pct to check_class_type."""
+        from app.models import Verdict
+        from app.verifier.rules import verify_label
+
+        label = _make_label(
+            brand_name=_field("Valley Springs"),
+            class_type=_field("Table Wine"),
+            alcohol_content_pct=_field(14.5),
+            alcohol_content_text=_field("14.5% Alc./Vol."),
+        )
+        app = _make_application(
+            beverage_type=BeverageType.WINE,
+            brand_name="Valley Springs",
+            class_type="Table Wine",
+            alcohol_content_pct=13.0,  # within ±1.5pp of 14.5 — would silently PASS otherwise
+            net_contents="750 mL",
+            bottler_name="Valley Springs Winery",
+            bottler_address="3120 Vine Trail, St. Helena, CA 94574",
+        )
+        verdicts = verify_label(label, app)
+        # The class_type rule should FAIL with 4.21, even though alcohol_content
+        # passes (delta 1.5pp at the band edge for ≤14% wine).
+        assert verdicts["class_type"].verdict is Verdict.FAIL
+        assert "4.21" in verdicts["class_type"].cfr_citation
