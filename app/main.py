@@ -33,6 +33,7 @@ from app.config import get_settings
 from app.dependencies import get_extractor
 from app.extractors.base import LabelExtractor
 from app.extractors.gemini import ExtractorError
+from app.image_quality import ImageQualityResult, check_image_quality
 from app.models import (
     ApplicationData,
     BeverageType,
@@ -189,6 +190,31 @@ def _error_fragment(request: Request, heading: str, message: str) -> HTMLRespons
     )
 
 
+def _quality_error_fragment(
+    request: Request, quality: ImageQualityResult
+) -> HTMLResponse:
+    """Render the image-quality pre-check failure as an _error_panel fragment.
+
+    `hints` is passed as a structured list so the template escapes it
+    properly (no inline HTML concatenation). An agent fixes the photo
+    without scrolling back to the upload form (Sarah's UX constraint).
+    """
+    return templates.TemplateResponse(
+        request=request,
+        name="_error_panel.html",
+        context={
+            "heading": "Image needs to be reshot before we can verify it",
+            "message": quality.reason,
+            "hints": quality.hints,
+            "footer": (
+                "This check ran locally — no model call was made. "
+                "Reshoot and upload again to proceed."
+            ),
+        },
+        status_code=200,
+    )
+
+
 class _ImageUploadError(Exception):
     """Raised by `_read_image` for friendly-fragment-renderable failures.
 
@@ -255,6 +281,14 @@ async def _run_verification(
         fallback_used = False
         provider_used = settings.extractor_provider
     else:
+        # STR1: classical-CV pre-check. Catches lens-cap-dark / blown-out /
+        # blank-wall photos before we spend 1.5–7s on a doomed Gemini call.
+        # Cache hits skip this — they were extracted successfully once, so
+        # the image was good enough then and the bytes are identical now.
+        quality = check_image_quality(image_bytes)
+        if not quality.ok:
+            return _quality_error_fragment(request, quality)
+
         started = time.perf_counter()
         try:
             label_data, audit = await extractor.extract_with_audit(
@@ -485,6 +519,22 @@ async def extract_prefill(
     cached = cache.get(cache_key)
     if cached is not None:
         return JSONResponse(_prefill_payload(cached))
+
+    # STR1: classical-CV pre-check before the model call. /extract returns
+    # JSON, so the failure surfaces as a 400 with the same `error` / `detail`
+    # / `hints` shape the frontend already handles in the existing 502
+    # ExtractorError path — Alpine reads `data.error` and `data.detail` for
+    # the toast / inline message (see app/templates/index.html `applyPrefill`).
+    quality = check_image_quality(image_bytes)
+    if not quality.ok:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Image needs to be reshot before we can prefill the form",
+                "detail": quality.reason,
+                "hints": quality.hints,
+            },
+        )
 
     # Caller hasn't picked a beverage type yet — use a sensible default for
     # the prompt-conditioning; the model still returns its own beverage_type_guess.

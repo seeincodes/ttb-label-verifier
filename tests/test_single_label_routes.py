@@ -19,6 +19,7 @@ from app.models import (
     LabelData,
     WarningFormatting,
 )
+from tests._helpers import good_synthetic_png
 
 
 def _canonical_warning_text():
@@ -104,12 +105,8 @@ def make_client():
 
 
 # Minimal one-pixel PNG (the same payload smoke_extractor uses).
-import base64  # noqa: E402
 
-SYNTHETIC_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQMAAABJtOi3AAAABlBMVEX///8AAA"
-    "BVwtN+AAAAEElEQVR4nGNgGAWjYBSMAggAAQEAAAGYG3SXAAAAAElFTkSuQmCC"
-)
+SYNTHETIC_PNG = good_synthetic_png()
 
 
 # ---------------------------------------------------------------------------

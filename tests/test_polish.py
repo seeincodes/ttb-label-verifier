@@ -5,7 +5,6 @@ silently drop a Sarah-Chen-grandmother UX affordance.
 """
 from __future__ import annotations
 
-import base64
 from io import BytesIO
 
 import pytest
@@ -18,6 +17,7 @@ from app.models import (
     LabelData,
     WarningFormatting,
 )
+from tests._helpers import good_synthetic_png
 
 
 def _canonical_warning_text():
@@ -53,10 +53,7 @@ class StubExtractor(LabelExtractor):
         return self.canned
 
 
-SYNTHETIC_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQMAAABJtOi3AAAABlBMVEX///8AAA"
-    "BVwtN+AAAAEElEQVR4nGNgGAWjYBSMAggAAQEAAAGYG3SXAAAAAElFTkSuQmCC"
-)
+SYNTHETIC_PNG = good_synthetic_png()
 
 
 @pytest.fixture

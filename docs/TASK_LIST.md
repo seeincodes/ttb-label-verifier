@@ -132,7 +132,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 ### 15. Stretch features (if time permits)
 
-- [ ] **[STR1]** Image-quality pre-check with actionable feedback.
+- [x] **[STR1]** Image-quality pre-check with actionable feedback. `app/image_quality.py` runs a classical-CV pre-check before the Gemini call (mean luminance + stddev thresholds catch lens-cap-dark, blown-out, and blank-wall photos); failure renders `_error_panel.html` with reshoot hints. Wired into `/verify` and `/extract`. 15 tests in `tests/test_image_quality{,_integration}.py`. All 11 manual_test labels pass; cache hits skip the gate (already-extracted images skip re-checking).
 - [ ] **[STR2]** Bounding-box overlay viewer.
 - [ ] **[STR3]** A / B model comparison UI (Gemini + OpenAI side by side).
 - [ ] **[STR4]** Keyboard shortcuts (Jenny's power-user case).
