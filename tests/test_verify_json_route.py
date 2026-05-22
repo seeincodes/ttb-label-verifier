@@ -6,7 +6,6 @@ surface in the UI as a graceful _error_panel, not a 500 / 422 raw.
 """
 from __future__ import annotations
 
-import base64
 import json
 from io import BytesIO
 
@@ -20,6 +19,7 @@ from app.models import (
     LabelData,
     WarningFormatting,
 )
+from tests._helpers import good_synthetic_png
 
 
 def _canonical_warning_text():
@@ -69,10 +69,7 @@ class StubExtractor(LabelExtractor):
         return self.canned
 
 
-SYNTHETIC_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQMAAABJtOi3AAAABlBMVEX///8AAA"
-    "BVwtN+AAAAEElEQVR4nGNgGAWjYBSMAggAAQEAAAGYG3SXAAAAAElFTkSuQmCC"
-)
+SYNTHETIC_PNG = good_synthetic_png()
 
 
 VALID_APPLICATION_JSON = json.dumps(

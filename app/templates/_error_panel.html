@@ -1,5 +1,8 @@
-{# Graceful-failure fragment for ExtractorError (and friends). Same
-   no-<html>-shell rule as _result_panel.html. #}
+{# Graceful-failure fragment for ExtractorError + image-quality pre-check
+   failures. This is a fragment, NEVER a full document — HTMX swaps it into
+   #result-panel, so no DOCTYPE / no full HTML shell (see ERROR_FIX_LOG).
+   The `hints` list (optional) renders as a bullet list under the message
+   — used by the STR1 image-quality gate to surface actionable reshoot tips. #}
 <article class="rounded-lg border border-slate-300 bg-slate-100 p-6 shadow-sm">
   <div class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-900">
     <span aria-hidden="true">●</span>
@@ -7,7 +10,12 @@
   </div>
   <h2 class="mt-3 text-lg font-semibold tracking-tight text-slate-900">{{ heading | default("Could not verify this label") }}</h2>
   <p class="mt-2 text-sm text-slate-700">{{ message }}</p>
+  {% if hints %}
+    <ul class="mt-3 ml-5 list-disc text-xs text-slate-700">
+      {% for hint in hints %}<li>{{ hint }}</li>{% endfor %}
+    </ul>
+  {% endif %}
   <p class="mt-4 text-xs text-slate-500">
-    Please try again. If this persists, switch the EXTRACTOR_PROVIDER env var to fall back to OpenAI.
+    {{ footer | default("Please try again. If this persists, switch the EXTRACTOR_PROVIDER env var to fall back to OpenAI.") }}
   </p>
 </article>

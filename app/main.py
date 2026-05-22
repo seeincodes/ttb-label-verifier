@@ -33,6 +33,7 @@ from app.config import get_settings
 from app.dependencies import get_extractor
 from app.extractors.base import LabelExtractor
 from app.extractors.gemini import ExtractorError
+from app.image_quality import ImageQualityResult, check_image_quality
 from app.models import (
     ApplicationData,
     BeverageType,
@@ -45,6 +46,7 @@ from app.verifier.rules import verify_label
 BASE_DIR = Path(__file__).resolve().parent
 SAMPLE_DIR = BASE_DIR.parent / "sample_data"
 AVAILABLE_SAMPLES = ("spirits-pass", "abv-fail", "warning-fail")
+EVAL_RESULTS_DIR = BASE_DIR.parent / "eval" / "results"
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -189,6 +191,31 @@ def _error_fragment(request: Request, heading: str, message: str) -> HTMLRespons
     )
 
 
+def _quality_error_fragment(
+    request: Request, quality: ImageQualityResult
+) -> HTMLResponse:
+    """Render the image-quality pre-check failure as an _error_panel fragment.
+
+    `hints` is passed as a structured list so the template escapes it
+    properly (no inline HTML concatenation). An agent fixes the photo
+    without scrolling back to the upload form (Sarah's UX constraint).
+    """
+    return templates.TemplateResponse(
+        request=request,
+        name="_error_panel.html",
+        context={
+            "heading": "Image needs to be reshot before we can verify it",
+            "message": quality.reason,
+            "hints": quality.hints,
+            "footer": (
+                "This check ran locally — no model call was made. "
+                "Reshoot and upload again to proceed."
+            ),
+        },
+        status_code=200,
+    )
+
+
 class _ImageUploadError(Exception):
     """Raised by `_read_image` for friendly-fragment-renderable failures.
 
@@ -255,6 +282,14 @@ async def _run_verification(
         fallback_used = False
         provider_used = settings.extractor_provider
     else:
+        # STR1: classical-CV pre-check. Catches lens-cap-dark / blown-out /
+        # blank-wall photos before we spend 1.5–7s on a doomed Gemini call.
+        # Cache hits skip this — they were extracted successfully once, so
+        # the image was good enough then and the bytes are identical now.
+        quality = check_image_quality(image_bytes)
+        if not quality.ok:
+            return _quality_error_fragment(request, quality)
+
         started = time.perf_counter()
         try:
             label_data, audit = await extractor.extract_with_audit(
@@ -486,6 +521,22 @@ async def extract_prefill(
     if cached is not None:
         return JSONResponse(_prefill_payload(cached))
 
+    # STR1: classical-CV pre-check before the model call. /extract returns
+    # JSON, so the failure surfaces as a 400 with the same `error` / `detail`
+    # / `hints` shape the frontend already handles in the existing 502
+    # ExtractorError path — Alpine reads `data.error` and `data.detail` for
+    # the toast / inline message (see app/templates/index.html `applyPrefill`).
+    quality = check_image_quality(image_bytes)
+    if not quality.ok:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Image needs to be reshot before we can prefill the form",
+                "detail": quality.reason,
+                "hints": quality.hints,
+            },
+        )
+
     # Caller hasn't picked a beverage type yet — use a sensible default for
     # the prompt-conditioning; the model still returns its own beverage_type_guess.
     try:
@@ -687,5 +738,63 @@ async def batch_export(
         media_type="text/csv",
         headers={
             "Content-Disposition": f'attachment; filename="ttb-batch-{run_id}.csv"',
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# /eval — in-app eval-suite dashboard (STR5)
+# ---------------------------------------------------------------------------
+
+
+_EVAL_DASHBOARD_TEMPLATE = "eval_dashboard.html"
+
+
+def _latest_eval_result_path() -> Path | None:
+    """Return the newest eval-*.json file in EVAL_RESULTS_DIR, or None.
+
+    Filenames are `eval-YYYYMMDDTHHMMSSZ.json` — lexicographic sort is the
+    chronological sort because the timestamp is fixed-width."""
+    if not EVAL_RESULTS_DIR.exists():
+        return None
+    candidates = sorted(EVAL_RESULTS_DIR.glob("eval-*.json"))
+    return candidates[-1] if candidates else None
+
+
+@app.get("/eval", response_class=HTMLResponse)
+async def eval_dashboard(request: Request) -> HTMLResponse:
+    """Render the most recent `make eval` result as an HTML dashboard.
+
+    Empty-state path (no result files yet) renders a help card pointing
+    at `make eval` rather than a 404 — reviewers visiting the deployed
+    URL who haven't seeded the dir need a hint, not a dead page.
+    """
+    latest = _latest_eval_result_path()
+    if latest is None:
+        return templates.TemplateResponse(
+            request=request,
+            name=_EVAL_DASHBOARD_TEMPLATE,
+            context={"result": None, "filename": None},
+        )
+
+    try:
+        payload = json.loads(latest.read_text())
+    except json.JSONDecodeError as exc:
+        return templates.TemplateResponse(
+            request=request,
+            name=_EVAL_DASHBOARD_TEMPLATE,
+            context={
+                "result": None,
+                "filename": latest.name,
+                "parse_error": f"{exc.__class__.__name__}: {exc}",
+            },
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name=_EVAL_DASHBOARD_TEMPLATE,
+        context={
+            "result": payload,
+            "filename": latest.name,
         },
     )
