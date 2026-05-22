@@ -61,7 +61,7 @@ Browser (HTMX + Alpine + Tailwind, no build step)
 │        │  miss                    │
 │        ▼                          │
 │   LabelExtractor ABC              │  one ~30-line abstraction; concrete:
-│     · GeminiExtractor (primary)   │    Gemini 2.5 Flash (~1.5 s avg)
+│     · GeminiExtractor (primary)   │    Gemini 2.5 Flash (7–9 s on Render in practice)
 │     · OpenAIExtractor (fallback)  │    GPT-4o on Gemini failure
 │        │                          │
 │        ▼  LabelData JSON          │
@@ -126,7 +126,7 @@ A/B comparison between Gemini and OpenAI: fixture mode bypasses the extractor (d
 
 - **PDF labels.** JPG / PNG only.
 - **Persistent storage.** In-memory LRU cache only, wiped on restart. Deliberate PII-avoidance choice.
-- **Authentication.** None. Production deploy adds agency SSO at the FastAPI middleware layer.
+- **Authentication and CSRF.** Neither. Production deploy adds agency SSO at the FastAPI middleware layer and a CSRF token on the multipart forms. There's no authenticated state to attack today, but both belong in the same production pass.
 - **Background queue for large batches.** SSE + `asyncio.Semaphore(5)` is fine for ≤50 labels per run. Larger needs a real queue.
 - **GovCloud routing.** Gemini calls go to `generativelanguage.googleapis.com`; Vertex AI (FedRAMP / IL4) is the production routing.
 - **Font-size measurement** on the government warning. 27 CFR 16.22 sets minimum heights (1 / 2 / 3 mm by container volume); the prototype checks only caps / bold / continuous.

@@ -165,8 +165,9 @@ def latency_percentiles(latencies_ms: Iterable[int]) -> dict[str, int]:
 def verdict_distribution(verdicts: Iterable[Verdict]) -> dict[str, int]:
     """Counts per verdict, always with all four keys present.
 
-    Downstream consumers (README §9, results JSON) don't have to
-    defensively check for missing verdict types.
+    Downstream consumers (the README "Eval results" table, the in-app
+    /eval dashboard, results JSON) don't have to defensively check for
+    missing verdict types.
     """
     out = {"pass": 0, "warn": 0, "fail": 0, "error": 0}
     for v in verdicts:

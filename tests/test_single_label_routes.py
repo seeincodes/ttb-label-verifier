@@ -420,3 +420,44 @@ class TestPostVerify:
             assert "503" in body or "unavailable" in body or "again" in body
         finally:
             app.dependency_overrides.clear()
+
+    def test_non_image_content_type_rejected(self, make_client):
+        """Non-image bytes (text/plain, fake-JPEG headers, etc.) must never
+        reach the vision model. The STR1 image-quality pre-check is the
+        load-bearing defense: PIL can't decode non-image bytes, so the
+        route returns a friendly 'JPG or PNG' fragment before any model
+        call. This test pins that behavior so a future refactor of the
+        image-quality gate doesn't accidentally let arbitrary bytes through.
+
+        (Originally an audit-flagged concern about a loose `_mime_from_upload`
+        fallback to image/jpeg. The audit turned out to be a false alarm —
+        the STR1 gate catches the same case at a different layer with a
+        better error message. Test preserved as a regression guard.)
+        """
+        client, stub = make_client(_fake_label())
+        resp = client.post(
+            "/verify",
+            data=_form_data(),
+            files={"image": ("not-a-label.txt", BytesIO(b"hello world"), "text/plain")},
+        )
+        assert resp.status_code == 200, "should render the _error_panel fragment, not 500"
+        body = resp.text.lower()
+        assert "image" in body
+        assert "jpg" in body or "jpeg" in body or "png" in body
+        assert len(stub.calls) == 0, "extractor must not be called on non-image bytes"
+
+    def test_fake_jpeg_with_dos_exe_bytes_also_rejected(self, make_client):
+        """Belt-and-braces: a file with a valid `image/jpeg` content-type
+        and a `.jpg` filename but DOS-EXE bytes inside still must not
+        reach Gemini. Same STR1 gate (PIL decode fails), same outcome."""
+        client, stub = make_client(_fake_label())
+        # DOS executable header ('MZ') + padding — a content-type spoof attempt.
+        resp = client.post(
+            "/verify",
+            data=_form_data(),
+            files={"image": ("evil.jpg", BytesIO(b"MZ" + b"\x90" * 1000), "image/jpeg")},
+        )
+        assert resp.status_code == 200
+        body = resp.text.lower()
+        assert "image" in body and ("jpg" in body or "jpeg" in body or "png" in body)
+        assert len(stub.calls) == 0
