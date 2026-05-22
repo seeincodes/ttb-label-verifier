@@ -123,6 +123,11 @@ class LabelData(BaseModel):
     country_of_origin: ExtractedField[str]
     government_warning_text: ExtractedField[str]
     government_warning_formatting: WarningFormatting
+    # Optional — added in the upload-prefill flow. Old payloads (pre-2026-05-21)
+    # omit this; new prompts ask the model to suggest one of the four
+    # BeverageType values. The agent's dropdown is still the source of truth;
+    # this is a suggestion used to pre-populate the form.
+    beverage_type_guess: Optional[BeverageType] = None
 
 
 # Severity rank for `Verdict.worst_of`. Higher = worse. Kept as a module-level

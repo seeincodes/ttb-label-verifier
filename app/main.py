@@ -411,6 +411,103 @@ async def verify_json(
 
 
 # ---------------------------------------------------------------------------
+# /extract — upload-prefill flow. Image → JSON suggestions for the form.
+# ---------------------------------------------------------------------------
+
+
+def _prefill_payload(label: LabelData) -> dict:
+    """Project a `LabelData` into the form-prefill JSON the frontend reads.
+
+    Conventions:
+      - Fields with confidence='low' OR value=null are omitted entirely.
+        The form input stays empty so the agent fills it manually rather
+        than starting from a likely-wrong guess (the MVP9 spirit applied
+        to the prefill, not just the verifier).
+      - `beverage_type` comes from the model's `beverage_type_guess` (the
+        agent confirms via the dropdown).
+      - `is_import` is derived: a country printed on the label ⇒ True.
+        A domestic label (country=null) ⇒ False.
+    """
+    payload: dict = {}
+
+    def _include(field_name: str, ef) -> None:
+        if ef.value is None or ef.confidence == "low":
+            return
+        payload[field_name] = ef.value
+
+    _include("brand_name", label.brand_name)
+    _include("class_type", label.class_type)
+    _include("alcohol_content_pct", label.alcohol_content_pct)
+    _include("net_contents", label.net_contents)
+    _include("bottler_name", label.bottler_name)
+    _include("bottler_address", label.bottler_address)
+
+    # is_import: derived from whether the model saw a country printed.
+    has_country = (
+        label.country_of_origin.value is not None
+        and label.country_of_origin.confidence != "low"
+    )
+    payload["is_import"] = has_country
+    if has_country:
+        payload["country_of_origin"] = label.country_of_origin.value
+
+    if label.beverage_type_guess is not None:
+        payload["beverage_type"] = label.beverage_type_guess.value
+
+    return payload
+
+
+@app.post("/extract", response_class=JSONResponse)
+async def extract_prefill(
+    image: UploadFile = File(...),
+    extractor: LabelExtractor = Depends(get_extractor),
+    cache: LabelDataCache = Depends(get_cache),
+) -> JSONResponse:
+    """Run extraction on an uploaded image and return form-prefill suggestions.
+
+    The verification flow still requires the agent to confirm / edit the
+    pre-filled form before clicking Verify — the two-source comparison
+    (label-vs-COLA) only has meaning if the COLA-side data is human-
+    confirmed. This route just removes the typing.
+
+    Uses the same extractor + cache as POST /verify, so a subsequent
+    /verify on the same image bytes is a cache hit.
+    """
+    try:
+        image_bytes = await _read_image(image)
+    except _ImageUploadError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"error": exc.heading, "detail": exc.message},
+        )
+
+    cache_key = cache.key_for(image_bytes)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JSONResponse(_prefill_payload(cached))
+
+    # Caller hasn't picked a beverage type yet — use a sensible default for
+    # the prompt-conditioning; the model still returns its own beverage_type_guess.
+    try:
+        label_data = await extractor.extract(
+            image_bytes=image_bytes,
+            beverage_type=BeverageType.DISTILLED_SPIRITS,
+            mime_type=_mime_from_upload(image),
+        )
+    except ExtractorError as exc:
+        return JSONResponse(
+            status_code=502,
+            content={
+                "error": "Vision model could not read this label",
+                "detail": str(exc),
+            },
+        )
+
+    cache.put(cache_key, label_data)
+    return JSONResponse(_prefill_payload(label_data))
+
+
+# ---------------------------------------------------------------------------
 # /sample/{name} — pre-canned demo, bypasses extractor
 # ---------------------------------------------------------------------------
 

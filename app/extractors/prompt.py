@@ -85,6 +85,7 @@ _EXAMPLE_RESPONSE = {
         "continuous": True,
         "confidence": "high",
     },
+    "beverage_type_guess": "distilled_spirits",
 }
 
 
@@ -124,7 +125,8 @@ def build_extraction_prompt(beverage_type: BeverageType) -> str:
         Required top-level keys (exactly these — no extras):
           brand_name, class_type, alcohol_content_pct, alcohol_content_text,
           net_contents, bottler_name, bottler_address, country_of_origin,
-          government_warning_text, government_warning_formatting.
+          government_warning_text, government_warning_formatting,
+          beverage_type_guess.
 
         Field guidance:
           - alcohol_content_pct: the numeric percentage as a float (e.g. 45.0).
@@ -137,6 +139,18 @@ def build_extraction_prompt(beverage_type: BeverageType) -> str:
             of origin is actually visible on the label.
           - government_warning_text: the full warning text verbatim from the
             label (used for an exact-match check against 27 CFR 16.21).
+
+        beverage_type_guess is a plain string (no value/confidence wrapper)
+        with one of exactly these four values, your best read of the label's
+        regulatory category:
+          - "distilled_spirits" — whiskey, vodka, gin, rum, tequila, brandy,
+                                  liqueur, etc.
+          - "wine"              — still / sparkling / fortified / dessert wine
+          - "malt_beverage"     — beer, ale, lager, stout, porter, malt liquor
+          - "other"             — hard seltzer, RTD cocktails, cider, anything
+                                  that doesn't fit the three above.
+        This is a suggestion used to pre-populate a form for the agent — the
+        agent confirms the final classification.
 
         government_warning_formatting is a different shape — four keys, all
         required, with no value/confidence wrapper around each key:

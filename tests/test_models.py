@@ -290,6 +290,41 @@ class TestLabelData:
         again = LabelData.model_validate_json(data.model_dump_json())
         assert again == data
 
+    def test_beverage_type_guess_is_optional_and_back_compatible(self):
+        """Existing payloads predate beverage_type_guess and shouldn't break."""
+        from app.models import LabelData
+
+        data = LabelData.model_validate_json(GEMINI_SAMPLE_JSON)
+        # Field exists, defaults to None when the payload omitted it.
+        assert data.beverage_type_guess is None
+
+    def test_beverage_type_guess_accepts_known_values(self):
+        """When the prompt's prefill flow adds the key, it parses cleanly."""
+        import json
+
+        from app.models import BeverageType, LabelData
+
+        payload = json.loads(GEMINI_SAMPLE_JSON)
+        for guess in ("distilled_spirits", "wine", "malt_beverage", "other"):
+            payload["beverage_type_guess"] = guess
+            data = LabelData.model_validate(payload)
+            assert data.beverage_type_guess is BeverageType(guess)
+
+    def test_beverage_type_guess_invalid_value_raises(self):
+        """Closed set — a stray model output like 'cider' should fail parse
+        rather than silently degrade. The model is told the four allowed
+        values in the prompt."""
+        import json
+
+        from pydantic import ValidationError
+
+        from app.models import LabelData
+
+        payload = json.loads(GEMINI_SAMPLE_JSON)
+        payload["beverage_type_guess"] = "cider"
+        with pytest.raises(ValidationError):
+            LabelData.model_validate(payload)
+
 
 class TestVerdict:
     """Severity ordering per presearch §5.4: ERROR > FAIL > WARN > PASS.

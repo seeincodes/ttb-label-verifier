@@ -174,6 +174,36 @@ class TestGetIndex:
         for sample in ("spirits-pass", "abv-fail", "warning-fail"):
             assert sample in body, f"sample button {sample} missing"
 
+    def test_form_wires_upload_prefill_to_extract_route(self):
+        """The form's file-input change handler must call POST /extract so
+        the agent's typing is reduced. Pinned at the affordance level so
+        a CSS / Alpine refactor doesn't silently drop the wiring."""
+        from app.main import app
+
+        client = TestClient(app)
+        body = client.get("/").text
+        # Alpine component is named verifyForm() and posts to /extract.
+        assert "verifyForm()" in body
+        assert "/extract" in body
+        # x-model bindings exist so the prefill can populate the inputs.
+        for field in ("brand_name", "alcohol_content_pct", "bottler_name"):
+            assert f'x-model="fields.{field}"' in body, (
+                f"prefill x-model binding missing for {field}"
+            )
+
+    def test_prefill_visual_cue_present(self):
+        """Pre-filled fields must look different so the agent eyes are drawn
+        to whether they confirmed/edited each one before clicking Verify.
+        Either an amber ring/border or a 'suggested' label per field."""
+        from app.main import app
+
+        client = TestClient(app)
+        body = client.get("/").text
+        # Amber styling is the visual cue; (suggested) text is the
+        # textual cue. Either / both is acceptable; both are checked.
+        assert "amber-300" in body or "amber-50" in body
+        assert "suggested" in body.lower()
+
 
 # ---------------------------------------------------------------------------
 # POST /verify — full round-trip with stubbed extractor

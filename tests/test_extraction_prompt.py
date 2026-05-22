@@ -145,3 +145,32 @@ class TestExtractionPrompt:
 
         prompt = build_extraction_prompt(BeverageType.OTHER).lower()
         assert "no markdown" in prompt or "without markdown" in prompt
+
+    def test_prompt_asks_model_to_guess_beverage_type(self):
+        """For the upload-prefill flow the model must also return its best
+        guess at the beverage_type so the form's dropdown can be pre-set.
+        The agent is the source of truth for the regulatory classification
+        — this is just a suggestion."""
+        from app.extractors.prompt import build_extraction_prompt
+
+        prompt = build_extraction_prompt(BeverageType.DISTILLED_SPIRITS)
+        assert "beverage_type_guess" in prompt
+        # the four allowed values must be mentioned so the model knows the closed set
+        for v in ("distilled_spirits", "wine", "malt_beverage", "other"):
+            assert v in prompt, f"prompt missing beverage_type_guess value: {v!r}"
+
+    def test_json_example_includes_beverage_type_guess(self):
+        """The literal example response should also carry the new key so
+        the model mimics the right shape."""
+        import json
+
+        from app.extractors.prompt import build_extraction_prompt
+
+        prompt = build_extraction_prompt(BeverageType.WINE)
+        first_brace = prompt.find("{")
+        last_brace = prompt.rfind("}")
+        example = json.loads(prompt[first_brace : last_brace + 1])
+        assert "beverage_type_guess" in example
+        assert example["beverage_type_guess"] in {
+            "distilled_spirits", "wine", "malt_beverage", "other"
+        }

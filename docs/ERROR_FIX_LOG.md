@@ -51,6 +51,15 @@ Suggested category prefixes for this project:
 
 ## Log
 
+### 2026-05-21 — [EXTRACT] Upload-prefill smoke confirms the two-source design holds
+
+- **Symptom (not an error — a behavior worth recording):** `POST /extract` on the synthetic Crescent Bay tequila label (with "IMPORTED BY Crescent Bay Spirits Co" printed but no country) returns `is_import=false`. The COLA application declares `is_import=true, country=Mexico`. The two disagree by design — the agent's prefill is the *label's read*, not the COLA truth.
+- **Context:** Live smoke against `sample_data/manual_test/batch/03_crescent_bay_tequila.png` via Gemini, 8.2 s round-trip. The `LabelData.country_of_origin.value` was correctly `null` (the label doesn't print a country), so `_prefill_payload()` set `is_import=false`. This is what makes a subsequent `/verify` FAIL on `country_of_origin` (27 CFR 5.36(d)) — the verifier catches that an import label is missing its required country statement.
+- **Root cause:** working as designed. The prefill removes typing, not human judgment. The agent's COLA-side data (entered into the form, or via /verify/json) is the source of truth for `is_import`; the model's read is a suggestion.
+- **Fix:** None. The amber "(suggested — confirm vs application)" labels in the form are the UX hint that drives the agent to flip the `is_import` checkbox manually before clicking Verify. If they don't, the resulting FAIL on `country_of_origin` is the right verdict.
+- **Prevention:** `tests/test_extract_route.py::test_domestic_label_sets_is_import_false` pins the no-country-printed → `is_import=false` behavior. The two-source comparison is preserved by construction.
+- **Also confirmed:** first `/extract` on a 65 KB PNG → 7.1 s cache miss; second `/extract` on the same bytes → 1.7 ms cache hit (4000× speedup). The prefill flow shares the LRUCache with `/verify`, so a label that's been prefilled and then verified pays exactly one Gemini call.
+
 ### 2026-05-20 — [OPENAI] Automatic fallback to Gemini confirmed end-to-end
 
 - **Symptom:** smoke test with `EXTRACTOR_PROVIDER=openai` recovers on `insufficient_quota` 429 by falling back to the configured Gemini secondary, with `audit.fallback_used=True` and `audit.provider_used="GeminiExtractor"`.
