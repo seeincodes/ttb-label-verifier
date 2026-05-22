@@ -136,7 +136,7 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 - [ ] **[STR2]** Bounding-box overlay viewer.
 - [ ] **[STR3]** A / B model comparison UI (Gemini + OpenAI side by side).
 - [ ] **[STR4]** Keyboard shortcuts (Jenny's power-user case).
-- [ ] **[STR5]** In-app eval dashboard.
+- [x] **[STR5]** In-app eval dashboard. `GET /eval` reads the most recent `eval/results/eval-*.json` and renders headline metrics (FP/FN rate, verdict distribution, latency percentiles), per-field PASS rate, bucket breakdown, and a per-fixture table with drift highlighting (rows where actual != expected get an amber background and a "drift ✗" pill). Empty-state path renders `make eval` guidance instead of 404. Nav link added to base.html. 7 tests in `tests/test_eval_dashboard_route.py`.
 - [x] **[STR6]** Wine class-boundary edge case (14.5% wine labeled "table wine" — class designation FAIL even when numeric tolerance technically passes). `check_class_type` runs the §4.21 class-vs-ABV consistency rule (`_wine_class_boundary_check`); covered by 9 tests in `tests/test_rules.py::TestWineClassBoundary` + 1 orchestrator test, plus eval fixture `edge_table_wine_above_14pct` (FAIL).
 
 ### 16. Submission

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}TTB Label Verification — Eval dashboard{% endblock %}
+
+{% block content %}
+  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <h1 class="text-xl font-semibold tracking-tight">Eval suite</h1>
+      {% if filename %}
+        <p class="text-xs text-slate-500">
+          Loaded <code class="rounded bg-slate-100 px-1 py-0.5">{{ filename }}</code>
+        </p>
+      {% endif %}
+    </div>
+    <p class="mt-2 text-sm text-slate-600">
+      Each fixture in <code class="text-xs">eval/test_set/</code> goes through the deterministic
+      verifier; the harness compares <em>actual</em> against <em>expected</em> and flags drift.
+      Re-run with <code class="text-xs">make eval</code> on the host; this page reads the most
+      recent JSON in <code class="text-xs">eval/results/</code>.
+    </p>
+    <p class="mt-3 text-sm">
+      <a href="/" class="text-slate-700 underline hover:text-slate-900">← Back to upload</a>
+    </p>
+  </section>
+
+  {% if not result %}
+    {# Empty-state — no JSON results found in eval/results/ #}
+    <section class="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-6 shadow-sm">
+      <h2 class="text-lg font-semibold tracking-tight text-amber-900">No eval results yet</h2>
+      <p class="mt-2 text-sm text-amber-900">
+        Run the harness to populate this dashboard:
+      </p>
+      <pre class="mt-3 overflow-x-auto rounded bg-amber-100 p-3 text-xs text-amber-900">make eval</pre>
+      <p class="mt-3 text-xs text-amber-800">
+        The harness writes a timestamped JSON into <code>eval/results/</code>. Reload this page
+        afterwards.
+      </p>
+      {% if parse_error %}
+        <p class="mt-3 text-xs text-red-800">Could not parse <code>{{ filename }}</code>: {{ parse_error }}</p>
+      {% endif %}
+    </section>
+  {% else %}
+    {% set summary = result.summary %}
+    {% set fp = summary.false_positive_rate %}
+    {% set fn = summary.false_negative_rate %}
+    {% set n = summary.n_fixtures %}
+    {% set agreement = (result.records | rejectattr("expected_overall", "ne", "") | list | length) %}
+    {# Count agreements explicitly — Jinja's filter chain on the dict-of-record-dicts is verbose; use a Python-shaped helper instead. #}
+
+    <!-- Headline metrics card -->
+    <section class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wider text-slate-500">fixtures</p>
+        <p class="mt-1 text-2xl font-semibold text-slate-900">{{ n }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wider text-slate-500">false-positive rate</p>
+        <p class="mt-1 text-2xl font-semibold {{ 'text-emerald-700' if fp == 0 else 'text-red-700' }}">
+          {{ "%.4f" | format(fp) }}
+        </p>
+        <p class="text-[10px] text-slate-500">PASS on a true violation — critical to minimise</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wider text-slate-500">false-negative rate</p>
+        <p class="mt-1 text-2xl font-semibold {{ 'text-emerald-700' if fn == 0 else 'text-amber-700' }}">
+          {{ "%.4f" | format(fn) }}
+        </p>
+        <p class="text-[10px] text-slate-500">FAIL on a valid label</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wider text-slate-500">extractor</p>
+        <p class="mt-1 text-sm font-medium text-slate-900">{{ result.extractor_provider }}</p>
+        <p class="text-[10px] text-slate-500">{{ result.mode }}</p>
+      </div>
+    </section>
+
+    <!-- Verdict distribution + latency -->
+    <section class="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Verdict distribution (actual)</h2>
+        <ul class="mt-3 grid grid-cols-4 gap-2 text-center text-sm">
+          {% for verdict, count in summary.verdict_distribution.items() %}
+            {% set tone = {
+              "pass":  "bg-emerald-50 text-emerald-900 border-emerald-200",
+              "warn":  "bg-amber-50 text-amber-900 border-amber-200",
+              "fail":  "bg-red-50 text-red-900 border-red-200",
+              "error": "bg-slate-100 text-slate-900 border-slate-300",
+            }[verdict] %}
+            <li class="rounded-md border {{ tone }} p-2">
+              <p class="text-xs uppercase tracking-wider">{{ verdict }}</p>
+              <p class="mt-1 text-xl font-semibold">{{ count }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Latency (verifier hot path)</h2>
+        <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+          {% for label, key in [("p50", "p50"), ("p95", "p95"), ("p99", "p99")] %}
+            <div class="rounded-md border border-slate-200 bg-slate-50 p-2">
+              <dt class="text-xs uppercase tracking-wider text-slate-500">{{ label }}</dt>
+              <dd class="mt-1 text-xl font-semibold text-slate-900">
+                {{ summary.latency_ms[key] }} <span class="text-xs font-normal">ms</span>
+              </dd>
+            </div>
+          {% endfor %}
+        </dl>
+        <p class="mt-3 text-xs text-slate-500">
+          Cost / label: {{ "%.6f" | format(summary.cost_per_label_usd) }} USD ·
+          {% if summary.cache_hit_rate is none %}cache: N/A (fixture mode){% else %}cache hit rate: {{ "%.0f" | format(summary.cache_hit_rate * 100) }}%{% endif %}
+        </p>
+      </div>
+    </section>
+
+    <!-- Per-field accuracy + bucket breakdown -->
+    <section class="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Per-field PASS rate</h2>
+        <table class="mt-3 w-full text-left text-sm">
+          <tbody class="divide-y divide-slate-200">
+            {% for field, rate in summary.per_field_accuracy.items() %}
+              <tr>
+                <td class="py-1.5 font-medium text-slate-800">{{ field }}</td>
+                <td class="py-1.5 text-right tabular-nums">{{ "%.0f" | format(rate * 100) }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Bucket breakdown</h2>
+        <table class="mt-3 w-full text-left text-sm">
+          <thead class="text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+              <th class="py-1.5">bucket</th>
+              <th class="py-1.5 text-right">pass</th>
+              <th class="py-1.5 text-right">warn</th>
+              <th class="py-1.5 text-right">fail</th>
+              <th class="py-1.5 text-right">error</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for bucket, counts in summary.bucket_breakdown.items() %}
+              <tr>
+                <td class="py-1.5 font-medium text-slate-800">{{ bucket }}</td>
+                <td class="py-1.5 text-right tabular-nums">{{ counts.pass or 0 }}</td>
+                <td class="py-1.5 text-right tabular-nums">{{ counts.warn or 0 }}</td>
+                <td class="py-1.5 text-right tabular-nums">{{ counts.fail or 0 }}</td>
+                <td class="py-1.5 text-right tabular-nums">{{ counts.error or 0 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Per-fixture table — disagreement rows highlighted -->
+    <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-slate-700">Per-fixture results</h2>
+      <p class="mt-1 text-xs text-slate-500">
+        Rows where the verifier disagrees with the fixture's <code>expected_overall</code>
+        are highlighted (these are eval drift — fix the fixture or the rule, never the dashboard).
+      </p>
+      <div class="mt-3 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600">
+            <tr>
+              <th class="px-3 py-2">fixture</th>
+              <th class="px-3 py-2">bucket</th>
+              <th class="px-3 py-2">expected</th>
+              <th class="px-3 py-2">actual</th>
+              <th class="px-3 py-2">drift</th>
+              <th class="px-3 py-2 text-right">latency ms</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white">
+            {% for r in result.records %}
+              {% set drift = r.actual_overall != r.expected_overall %}
+              <tr class="{{ 'bg-amber-50' if drift else '' }}">
+                <td class="px-3 py-2 font-mono text-xs">{{ r.name }}</td>
+                <td class="px-3 py-2 text-xs uppercase tracking-wider text-slate-500">{{ r.bucket }}</td>
+                <td class="px-3 py-2 text-xs uppercase">{{ r.expected_overall }}</td>
+                <td class="px-3 py-2 text-xs uppercase font-semibold">{{ r.actual_overall }}</td>
+                <td class="px-3 py-2 text-xs">
+                  {% if drift %}
+                    <span class="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-900">drift ✗</span>
+                  {% else %}
+                    <span class="text-emerald-700">✓</span>
+                  {% endif %}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-xs">{{ r.latency_ms }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

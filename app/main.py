@@ -46,6 +46,7 @@ from app.verifier.rules import verify_label
 BASE_DIR = Path(__file__).resolve().parent
 SAMPLE_DIR = BASE_DIR.parent / "sample_data"
 AVAILABLE_SAMPLES = ("spirits-pass", "abv-fail", "warning-fail")
+EVAL_RESULTS_DIR = BASE_DIR.parent / "eval" / "results"
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -737,5 +738,63 @@ async def batch_export(
         media_type="text/csv",
         headers={
             "Content-Disposition": f'attachment; filename="ttb-batch-{run_id}.csv"',
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# /eval — in-app eval-suite dashboard (STR5)
+# ---------------------------------------------------------------------------
+
+
+_EVAL_DASHBOARD_TEMPLATE = "eval_dashboard.html"
+
+
+def _latest_eval_result_path() -> Path | None:
+    """Return the newest eval-*.json file in EVAL_RESULTS_DIR, or None.
+
+    Filenames are `eval-YYYYMMDDTHHMMSSZ.json` — lexicographic sort is the
+    chronological sort because the timestamp is fixed-width."""
+    if not EVAL_RESULTS_DIR.exists():
+        return None
+    candidates = sorted(EVAL_RESULTS_DIR.glob("eval-*.json"))
+    return candidates[-1] if candidates else None
+
+
+@app.get("/eval", response_class=HTMLResponse)
+async def eval_dashboard(request: Request) -> HTMLResponse:
+    """Render the most recent `make eval` result as an HTML dashboard.
+
+    Empty-state path (no result files yet) renders a help card pointing
+    at `make eval` rather than a 404 — reviewers visiting the deployed
+    URL who haven't seeded the dir need a hint, not a dead page.
+    """
+    latest = _latest_eval_result_path()
+    if latest is None:
+        return templates.TemplateResponse(
+            request=request,
+            name=_EVAL_DASHBOARD_TEMPLATE,
+            context={"result": None, "filename": None},
+        )
+
+    try:
+        payload = json.loads(latest.read_text())
+    except json.JSONDecodeError as exc:
+        return templates.TemplateResponse(
+            request=request,
+            name=_EVAL_DASHBOARD_TEMPLATE,
+            context={
+                "result": None,
+                "filename": latest.name,
+                "parse_error": f"{exc.__class__.__name__}: {exc}",
+            },
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name=_EVAL_DASHBOARD_TEMPLATE,
+        context={
+            "result": payload,
+            "filename": latest.name,
         },
     )
