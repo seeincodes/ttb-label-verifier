@@ -51,6 +51,27 @@ Suggested category prefixes for this project:
 
 ## Log
 
+### 2026-05-22 — [GEMINI] Free-tier daily quota is 20 req/model/day; per-minute is 5 RPM
+
+- **Error:** `ClientError: 429 RESOURCE_EXHAUSTED. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash. Please retry in 14s.` Also seen with `limit: 5` for the per-minute variant.
+- **Context:** Local batch smoke against the 8-fixture suite under `BATCH_CONCURRENCY=5`. After the per-minute window blew through, the per-day window also tripped — accumulated from earlier smokes today (README captures, upload-prefill debugging, redesign screenshots, two batch attempts).
+- **Root cause:** Gemini free tier caps:
+    - 5 requests/minute per model (`GenerateRequestsPerMinutePerProjectPerModel-FreeTier`)
+    - 20 requests/day per model (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`)
+  Real numbers from the SDK error body. The 5 RPM limit is exactly what `BATCH_CONCURRENCY=5` is sized to push against; the 20/day is more brittle and limits how many batch dry-runs we can stage per UTC day.
+- **Fix:** No code change. Two operational adjustments worth documenting:
+    1. For batch runs against the free tier, lower `BATCH_CONCURRENCY` to 2–3 so the burst doesn't trip the per-minute window.
+    2. Paid tier (or a different model with higher RPM) is the real fix; free-tier limits are documented at <https://ai.google.dev/gemini-api/docs/rate-limits>.
+- **Prevention:** README §11 (Trade-offs) should note the free-tier caps so a reviewer running the deployed app doesn't read a 429 as an app bug. The batch SSE row carries the full SDK error body verbatim including `retryDelay` (`14s` / `35s`) and the `quotaMetric` — that's the right shape; future work could parse `retryDelay` and surface a "retry available in Ns" UI hint.
+
+### 2026-05-22 — [EXTRACT] Phone-photo-size JPEG (3000×4000, 614 KB) reliably 502s on Render
+
+- **Error:** `HTTP 502, total=19.118s` and `total=10.922s` on two consecutive `POST /extract` calls against an upscaled label JPEG.
+- **Context:** Baseline measurement for the client-side downscale work. The image was Fox Hollow upscaled to 3000×4000 / quality 90 to simulate a typical phone photo. Both attempts exceeded `EXTRACTION_TIMEOUT_SECONDS=12` on the Gemini side; the fallback layer then also failed (OpenAI `insufficient_quota`).
+- **Root cause:** Larger payloads → longer Gemini processing → frequent 12s timeouts. The free-tier free-tier-shaped infrastructure response time appears to scale with the input image bytes.
+- **Fix:** Client-side downscale to 1024 px long side at JPEG q=82 *before* upload (`app/templates/index.html` `downscaleImage` + `DataTransfer` swap). Same image content drops from 614 KB → 77 KB; the model gets no measurable benefit past ~1024 px on TTB labels (text is rarely smaller than 60–80 px tall at that resolution). Both `/extract` (background prefill) and `/verify` (HTMX submit) read from the swapped `input.files`, so one client-side resize benefits both.
+- **Prevention:** `tests/test_single_label_routes.py::test_image_downscale_helper_present` pins the function name + the maxLongSide constant ∈ [768, 2048].
+
 ### 2026-05-21 — [EXTRACT] Upload-prefill smoke confirms the two-source design holds
 
 - **Symptom (not an error — a behavior worth recording):** `POST /extract` on the synthetic Crescent Bay tequila label (with "IMPORTED BY Crescent Bay Spirits Co" printed but no country) returns `is_import=false`. The COLA application declares `is_import=true, country=Mexico`. The two disagree by design — the agent's prefill is the *label's read*, not the COLA truth.

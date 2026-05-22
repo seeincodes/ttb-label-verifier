@@ -251,14 +251,123 @@
           country_of_origin: '',
         },
 
-        onPick (e) {
-          const file = e.target.files && e.target.files[0];
-          this.previewUrl = file ? URL.createObjectURL(file) : null;
-          if (!file) return;
-          // Fire extract in the background — DO NOT await. The agent can
-          // start typing immediately while Gemini works (typical 7–9s).
+        async onPick (e) {
+          const input = e.target;
+          const file = input.files && input.files[0];
+          if (!file) {
+            this.previewUrl = null;
+            return;
+          }
+          // Show preview from the original immediately — the downscaled
+          // version is functionally identical at preview size.
+          this.previewUrl = URL.createObjectURL(file);
           this._agentTypedSinceUpload = {};
-          this.extract(file);
+
+          // Downscale the file BEFORE handing it to either /extract or
+          // /verify. Three reasons:
+          //   1. Phone photos are 2–5 MB; live smoke confirmed Gemini
+          //      regularly times out on the 12s budget for big payloads.
+          //   2. The model gets no information past ~1024px on the long
+          //      side; the bytes past that are wasted upload + processing.
+          //   3. Replacing input.files via DataTransfer means the
+          //      subsequent HTMX hx-post on the Verify button also picks
+          //      up the downscaled file — both /extract and /verify
+          //      benefit from one client-side resize.
+          let toUpload = file;
+          try {
+            const downscaled = await this.downscaleImage(file, this.maxLongSide, this.jpegQuality);
+            if (downscaled && downscaled.size < file.size) {
+              toUpload = downscaled;
+              // Swap the file in the input so HTMX serializes the smaller
+              // one when the user clicks Verify. DataTransfer is the only
+              // standard way to set input.files programmatically.
+              try {
+                const dt = new DataTransfer();
+                dt.items.add(downscaled);
+                input.files = dt.files;
+              } catch (_) {
+                // Older Safari may reject programmatic .files assignment.
+                // /extract still works (we use the downscaled blob in the
+                // fetch directly); /verify will fall back to the original.
+              }
+            }
+          } catch (err) {
+            // Downscale failed — fall back to the original. Better to
+            // upload slowly than to silently fail upload entirely.
+          }
+
+          // Fire extract in the background — DO NOT await. The agent can
+          // start typing immediately while Gemini works.
+          this.extract(toUpload);
+        },
+
+        // Max long-side in pixels for client-side downscale. 1024 px is
+        // well above what Gemini 2.5 Flash can use for TTB-label OCR
+        // (text on labels is rarely smaller than 60–80 px tall even at
+        // this size), and the JPEG q=82 transcode lands a typical 4032×3024
+        // phone photo in the 80–150 KB range.
+        maxLongSide: 1024,
+        jpegQuality: 0.82,
+
+        // Canvas-based downscale + JPEG transcode. Returns a File (subtype
+        // of Blob) so callers can either await blob.size for the wire
+        // measurement, or hand it straight to FormData / DataTransfer.
+        // Returns the ORIGINAL file untouched when:
+        //   - the image is already smaller than maxLongSide
+        //   - the browser can't decode the file (corrupt / HEIC / etc.)
+        //   - canvas.toBlob fails for any reason
+        async downscaleImage (file, maxLongSide, quality) {
+          if (!file || !file.type || !file.type.startsWith('image/')) return file;
+          const bitmap = await this._safeDecodeImage(file);
+          if (!bitmap) return file;
+          const w = bitmap.naturalWidth || bitmap.width;
+          const h = bitmap.naturalHeight || bitmap.height;
+          if (w <= maxLongSide && h <= maxLongSide) {
+            if (bitmap.close) bitmap.close();
+            return file;  // already small enough
+          }
+          const scale = maxLongSide / Math.max(w, h);
+          const tw = Math.round(w * scale);
+          const th = Math.round(h * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = tw;
+          canvas.height = th;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(bitmap, 0, 0, tw, th);
+          if (bitmap.close) bitmap.close();
+          const blob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', quality);
+          });
+          if (!blob) return file;
+          // Preserve the original name but force the .jpg extension since
+          // we always emit JPEG. Falls back to a synthetic name if the
+          // original had none.
+          const baseName = (file.name || 'label').replace(/\.[^.]+$/, '');
+          return new File([blob], baseName + '.jpg', { type: 'image/jpeg' });
+        },
+
+        // Decode helper. Prefers createImageBitmap (faster, off-main-thread
+        // on most browsers) but falls back to <img> + URL.createObjectURL
+        // when unavailable.
+        async _safeDecodeImage (file) {
+          try {
+            if (typeof createImageBitmap === 'function') {
+              return await createImageBitmap(file);
+            }
+          } catch (_) { /* fall through to img */ }
+          try {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = url;
+            });
+            URL.revokeObjectURL(url);
+            return img;
+          } catch (_) {
+            return null;
+          }
         },
 
         // Called from each input's @input handler. Records that the
