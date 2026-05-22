@@ -242,6 +242,34 @@ class TestGetIndex:
             or "setinterval" in body.lower()
         ), "elapsed-time counter affordance missing from the prefill UI"
 
+    def test_image_downscale_helper_present(self):
+        """Phone photos are 2-5 MB and routinely trip Gemini's 12s timeout
+        on Render (verified live: a 614 KB upscaled JPEG returned 502 after
+        19s; the same content downscaled to 1024px / 79 KB completes inside
+        the timeout). The form must downscale before upload so the agent's
+        first attempt isn't wasted on an oversized image.
+
+        Pin: the rendered template carries a downscaleImage function and
+        the max-long-side constant is at a sensible value (≥768, ≤2048
+        — anything outside that range is a misconfiguration)."""
+        from app.main import app
+
+        body = TestClient(app).get("/").text
+        # Function name (or close cousin) must appear so a future refactor
+        # can't silently drop the wiring.
+        assert "downscaleImage" in body or "downscale_image" in body, (
+            "downscale helper missing from the upload form"
+        )
+        # The constant should be visible in the rendered JS. Accept any
+        # value in [768, 2048] as a sane long-side cap.
+        import re
+        candidates = re.findall(r"maxLongSide\s*[:=]\s*(\d+)", body)
+        assert candidates, "MAX_LONG_SIDE constant not found"
+        max_side = int(candidates[0])
+        assert 768 <= max_side <= 2048, (
+            f"downscale long-side cap {max_side}px is outside the sane range [768, 2048]"
+        )
+
 
 # ---------------------------------------------------------------------------
 # POST /verify — full round-trip with stubbed extractor
