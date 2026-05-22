@@ -62,7 +62,7 @@ Suggested category prefixes for this project:
 - **Fix:** No code change. Two operational adjustments worth documenting:
     1. For batch runs against the free tier, lower `BATCH_CONCURRENCY` to 2–3 so the burst doesn't trip the per-minute window.
     2. Paid tier (or a different model with higher RPM) is the real fix; free-tier limits are documented at <https://ai.google.dev/gemini-api/docs/rate-limits>.
-- **Prevention:** README §11 (Trade-offs) should note the free-tier caps so a reviewer running the deployed app doesn't read a 429 as an app bug. The batch SSE row carries the full SDK error body verbatim including `retryDelay` (`14s` / `35s`) and the `quotaMetric` — that's the right shape; future work could parse `retryDelay` and surface a "retry available in Ns" UI hint.
+- **Prevention:** The README "Trade-offs" section notes the free-tier caps so a reviewer running the deployed app doesn't read a 429 as an app bug. The batch SSE row carries the full SDK error body verbatim including `retryDelay` (`14s` / `35s`) and the `quotaMetric` — that's the right shape; future work could parse `retryDelay` and surface a "retry available in Ns" UI hint.
 
 ### 2026-05-22 — [EXTRACT] Phone-photo-size JPEG (3000×4000, 614 KB) reliably 502s on Render
 

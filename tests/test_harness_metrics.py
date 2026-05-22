@@ -1,10 +1,10 @@
 """Tests for the eval-harness metrics math.
 
-The harness (`eval/harness.py`) aggregates across all 20 fixtures. Tests
+The harness (`eval/harness.py`) aggregates across all 21 fixtures. Tests
 here pin the math (false-positive rate, false-negative rate, latency
 percentile, verdict distribution) in isolation so regressions are
 obvious — when the real-image mode lands later, these tests are what
-catch a math bug before it ships to README §9.
+catch a math bug before it ships to the README "Eval results" table.
 
 Also a single end-to-end test confirming the harness runs across the
 checked-in fixture set without crashing and that actual==expected

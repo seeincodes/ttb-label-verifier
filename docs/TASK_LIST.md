@@ -100,8 +100,8 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 ### 12. Deploy [MVP14]
 
 - [x] Render web service: env vars set (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `EXTRACTOR_PROVIDER`, etc.), single-service web deploy. Live at <https://ttb-label-verifier-pybx.onrender.com/>.
-- [x] End-to-end smoke test on the deployed URL. 6 routes verified 2026-05-22: `/health`, `/`, `/sample/{spirits-pass,abv-fail,warning-fail}`, `/eval` — all 200 OK with the expected verdict / citation / empty-state guidance. See README §2 for the smoke output.
-- [x] Screenshots captured for the README deployment-failure backup. 5 PNGs in `docs/screenshots/` (home, three samples, eval-empty), embedded in README §2.
+- [x] End-to-end smoke test on the deployed URL. 6 routes verified 2026-05-22: `/health`, `/`, `/sample/{spirits-pass,abv-fail,warning-fail}`, `/eval` — all 200 OK with the expected verdict / citation / empty-state guidance. Smoke output appears in the README "Try it" section.
+- [x] Screenshots captured for the deployment-failure backup. 5 PNGs in `docs/screenshots/` (home, three samples, eval-empty), embedded in the README "Try it" section.
 
 **Pre-flight (done locally — see `docs/DEPLOY.md`):**
 

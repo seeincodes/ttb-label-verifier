@@ -70,7 +70,7 @@ From the discovery interviews, the following are explicit requirements that must
 
 **Why hybrid, not pure-LLM:** Federal context demands explainability and auditability. An LLM saying "this label fails" is unacceptable for a compliance decision; a Python rule saying "ABV on label (45.31%) exceeds expected (45.0%) by 0.31pp; tolerance per 27 CFR 5.65 is ±0.3pp" is reviewable, citable, and reproducible. Use AI where it shines (reading messy images), use deterministic code where it shines (regulatory rule enforcement).
 
-**Writeup angle (README §5):** *"Why I didn't just throw everything at the LLM"* — explicitly cover this in the README. This is exactly what an AI/SE interviewer wants to see.
+**Writeup angle (`docs/DESIGN_NOTES.md §1`):** *"Why I didn't just throw everything at the LLM"* — covered explicitly there. (Originally landed in the README as §5; moved out in the 2026-05-22 README trim, content preserved verbatim.)
 
 ### 3.2 Model selection: Gemini primary, OpenAI fallback
 
@@ -374,7 +374,7 @@ def check_abv_tolerance(extracted: float, expected: float, beverage: BeverageTyp
     )
 ```
 
-README §6 has a table of all CFR sections referenced.
+[`docs/DESIGN_NOTES.md §2`](DESIGN_NOTES.md) has a table of all CFR sections referenced. (Originally lived in the README as §6.)
 
 ### 5.8 Caching
 
@@ -416,7 +416,7 @@ Generate test labels using AI image generation (as the brief suggests). Document
 
 - Runnable via `make eval`
 - Prints a summary table to console and writes JSON results to `eval/results/`
-- README §8 includes the actual numbers from your final run, with a frank discussion of failure modes
+- The README "Eval results" section includes the actual numbers from the final run with a frank discussion of failure modes (originally landed as README §9; renamed in the 2026-05-22 trim)
 - Comparison run: same eval with `EXTRACTOR_PROVIDER=openai` to show the model-swap works and to surface accuracy/cost trade-offs
 
 ---
@@ -470,7 +470,7 @@ Total: ~21 hours, with ~2hr buffer.
 | Batch flow times out on large uploads | Low at prototype scale | Concurrency limit (5); SSE keeps connection alive; document background-job path |
 | Deployment hits free-tier limits during demo | Low | Render starter tier; pre-warm before submission; document cold-start expectation |
 | Reviewer can't access deployed URL (firewall, expired free tier) | Medium | Include screenshots + 30s screen-recording GIF in README; provide one-command Docker run as backup |
-| HTMX/SSE unfamiliar to reviewer | Low | README §4 briefly notes "frontend uses HTMX (server-rendered HTML fragments) for simplicity — see [link]" |
+| HTMX/SSE unfamiliar to reviewer | Low | The README "Architecture" section briefly notes "frontend uses HTMX (server-rendered HTML fragments) for simplicity — see [link]" |
 
 ---
 

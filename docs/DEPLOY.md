@@ -124,6 +124,6 @@ These are noted in `docs/ERROR_FIX_LOG.md` "Common Issues to Watch For":
 
 ## After deploy
 
-- Add the deployed URL to README §3 ("How to run" → "Hosted demo: <URL>").
+- Add the deployed URL to the README "Try it" section (replacing the placeholder URL).
 - Open the deployed URL on a mobile browser too — the form is responsive but worth confirming the file input works on iOS/Android.
-- Run `make eval` locally and commit the result to `eval/results/` (the dir is gitignored by default, so do this with `git add -f eval/results/<file>` if you want the README §9 numbers from a specific run to be reproducible).
+- Run `make eval` locally and commit the result to `eval/results/` (the dir is gitignored by default, so do this with `git add -f eval/results/<file>` if you want the README "Eval results" numbers from a specific run to be reproducible).

@@ -36,7 +36,7 @@ The extractor itself is treated as a third-party dependency — we do not unit-t
 | Single-label HTTP flow | One happy-path test per route (stretch) | `httpx`-based FastAPI test | `tests/test_routes.py` (stretch) |
 | Batch SSE flow | Manual via deployed URL | manual | demo + screenshots |
 
-Pytest is the only required test runner. The eval harness is a CLI tool, not a pytest plugin — its purpose is to produce the numbers that go in README §9, not to gate CI.
+Pytest is the only required test runner. The eval harness is a CLI tool, not a pytest plugin — its purpose is to produce the numbers that go in the README "Eval results" section, not to gate CI.
 
 ## Test Categories
 
@@ -72,7 +72,7 @@ Pytest is the only required test runner. The eval harness is a CLI tool, not a p
 CI is intentionally light-weight for this prototype:
 
 - **pytest** runs on every push (GitHub Actions, single Python 3.11 job): installs `requirements.txt`, runs `pytest -q`. Required to pass.
-- **Eval suite is NOT in CI.** Running ~ 20 vision-model calls per push costs money and adds latency for no signal — the eval is run locally / manually before submission and its results are pasted into README §9 with the run date and pricing snapshot. The README is honest about this.
+- **Eval suite is NOT in CI.** Running ~ 20 vision-model calls per push costs money and adds latency for no signal — the eval is run locally / manually before submission and its results are pasted into the README "Eval results" section with the run date and pricing snapshot. The README is honest about this.
 - **Linting / typing** are optional polish; if added, run as a separate non-blocking job to keep the green-tick story simple.
 - **Deploy:** Render auto-deploys on push to `main`; no manual gate.
 
@@ -89,10 +89,10 @@ CI is intentionally light-weight for this prototype:
 | [MVP7] Model abstraction + automatic fallback | Eval runs with both providers + `tests/test_factory.py` (stretch) for provider selection | Fallback path manually tested by killing Gemini's API key. |
 | [MVP8] LRU cache | `tests/test_cache.py` (miss / hit / SHA-256 / eviction) + manual demo of latency drop | |
 | [MVP9] Per-field confidence gate | `tests/test_rules.py::test_low_confidence_required_field_errors` + eval hard-image-quality labels | |
-| [MVP10] ≤ 5 s p95 cache miss | Eval harness latency report | Reported as a single metric in README §9. |
+| [MVP10] ≤ 5 s p95 cache miss | Eval harness latency report | Reported as a single metric in the README "Eval results" section. |
 | [MVP11] Warning two-layer check | `tests/test_warning.py` (text + formatting) + eval `warning-fail` sample | |
 | [MVP12] Beverage-type conditionality | `tests/test_rules.py::test_beverage_type_conditionality_matrix` | Parametrized over the §5.6 matrix. |
-| [MVP13] Eval suite via `make eval` | The eval suite itself is the test of [MVP13]; verify by running it. | README §9 includes the actual numbers and the run date. |
+| [MVP13] Eval suite via `make eval` | The eval suite itself is the test of [MVP13]; verify by running it. | The README "Eval results" section includes the actual numbers and the run date. |
 | [MVP14] Deployed prototype | Manual smoke on the deployed URL | Screenshots + GIF in README as deploy-failure backup. |
 | [STR1] – [STR6] Stretch features | Manual smoke as each is added | Optional; documented in PRD even if not built. |
 | [DOC1] – [DOC4] README + writeup | Manual review of README sections | Cross-checked against [TASK_LIST](TASK_LIST.md) Phase 2 task 14. |

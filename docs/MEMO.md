@@ -10,7 +10,7 @@ A federal-context prototype that combines vision AI (for reading messy label ima
 
 **Decision:** The vision model produces structured JSON with per-field confidence. Deterministic Python rules then apply normalization, fuzzy matching, ABV tolerances per beverage type, regex exact-match for the warning text, and three discrete yes / no formatting checks. The model never returns "PASS" or "FAIL."
 
-**Why over pure-LLM:** A compliance verdict is auditable only if it is reproducible. An LLM saying "this label fails" is unreviewable; a Python rule saying "ABV on label (45.31 %) exceeds expected (45.0 %) by 0.31 pp; tolerance per 27 CFR 5.65 is ± 0.3 pp" is reviewable, citable, and reproducible across runs. Federal context demands explainability — Treasury reviewers will weigh the *judgment* of where to draw the AI / deterministic line at least as heavily as the engineering. The README §5 ("Why I didn't just throw everything at the LLM") makes this case explicitly.
+**Why over pure-LLM:** A compliance verdict is auditable only if it is reproducible. An LLM saying "this label fails" is unreviewable; a Python rule saying "ABV on label (45.31 %) exceeds expected (45.0 %) by 0.31 pp; tolerance per 27 CFR 5.65 is ± 0.3 pp" is reviewable, citable, and reproducible across runs. Federal context demands explainability — Treasury reviewers will weigh the *judgment* of where to draw the AI / deterministic line at least as heavily as the engineering. [`docs/DESIGN_NOTES.md §1`](DESIGN_NOTES.md) ("Why hybrid") makes this case explicitly.
 
 **Why over pure-deterministic:** Reading text off a glare-covered, angled, low-light bottle photo is exactly what vision models excel at and exactly what brittle OCR-then-regex pipelines fail at. The split is intentional: AI reads the world, Python rules decide compliance.
 
@@ -52,7 +52,7 @@ A federal-context prototype that combines vision AI (for reading messy label ima
 
 ### 6. CFR citations inline in code AND in verdicts
 
-**Decision:** Every verifier rule has a docstring citing the CFR section it enforces (27 CFR 5.65(b), 27 CFR 16.21, etc.). Every FAIL or WARN reason string includes the same citation in plain English. The README §6 has a single consolidated CFR-reference table.
+**Decision:** Every verifier rule has a docstring citing the CFR section it enforces (27 CFR 5.65(b), 27 CFR 16.21, etc.). Every FAIL or WARN reason string includes the same citation in plain English. [`docs/DESIGN_NOTES.md §2`](DESIGN_NOTES.md) has the consolidated CFR-reference table.
 
 **Why:** Treasury role. The whole point of the take-home is signaling that the candidate understands the regulatory context. Inline citations in code are far stronger evidence than a README claim of "I read the regs." A reviewer who opens any verifier file should immediately see this signal.
 
@@ -97,7 +97,7 @@ Batch flow: same lifecycle per label, run inside an `asyncio.Semaphore(BATCH_CON
 | Failure mode | Likelihood | Mitigation |
 |---|---|---|
 | Gemini API latency variance pushes a label over the 5 s bar | Medium | `EXTRACTION_TIMEOUT_SECONDS=12` (above the google-genai 10 s minimum deadline); automatic OpenAI fallback; SSE for batch so users see progress not a spinner; cache for repeat queries |
-| Extraction prompt brittle across beverage types | High | Build the eval suite early; iterate the prompt against eval failures; include few-shot examples in the prompt; ship the eval numbers in README §9 with frank discussion of remaining failure modes |
+| Extraction prompt brittle across beverage types | High | Build the eval suite early; iterate the prompt against eval failures; include few-shot examples in the prompt; ship the eval numbers in the README "Eval results" section with frank discussion of remaining failure modes |
 | Government warning verbatim mismatch (multiple official variants) | Low (single canonical text confirmed from TTB.gov and 27 CFR 16.21) | Canonical text stored once in `app/verifier/warning.py` with the CFR citation in the docstring |
 | Vision-model formatting check unreliable | Medium | Phrase as three discrete yes / no questions with explicit visual definitions (caps / bold / continuous); if the model returns `medium` confidence on formatting, downgrade FAIL → WARN to avoid over-rejection |
 | Batch flow times out on very large uploads | Low at prototype scale | Concurrency limit of 5; SSE keeps the connection alive; production-queue path documented |

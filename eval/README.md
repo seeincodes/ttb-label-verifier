@@ -52,7 +52,7 @@ EXTRACTOR_PROVIDER=openai make eval
 mv eval/results/<latest>.json eval/results/openai-baseline.json
 ```
 
-The two result JSONs are diffable; the README §9 table is the
+The two result JSONs are diffable; the README "Eval results" table is the
 human-readable version of that diff. Expected dimensions to surface:
 
 | Dimension                  | Gemini 2.5 Flash | GPT-4o |
