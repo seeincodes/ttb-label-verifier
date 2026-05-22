@@ -18,17 +18,50 @@ Take-home for the AI Engineer / IT Specialist role at the U.S. Department of the
 
 ## §2 Demo
 
-<!-- TODO: drop in screenshots from /sample/{name} pages -->
+**Live URL:** <https://ttb-label-verifier-pybx.onrender.com/> (Render Web Service, single-instance free tier — first request after idle may cold-start in ~10 s).
 
-The deployed app exposes three preloaded samples that exercise the full flow without an upload — each renders the same `_result_panel.html` fragment used by real verifications, but runs the deterministic verifier only (no model call), so they work even when the API keys are not configured.
+Three preloaded samples exercise the full flow without an upload — each renders the same `_result_panel.html` fragment used by real verifications, but runs the deterministic verifier only (no model call), so they work even when the API keys are not configured.
 
-- `GET /sample/spirits-pass` — clean distilled spirits label, all 7 fields PASS.
-- `GET /sample/abv-fail` — ABV mismatch, FAIL with `27 CFR 5.65(b)` citation and the exact `pp` delta.
-- `GET /sample/warning-fail` — title-case "Government Warning", FAIL with `27 CFR 16.22` citation.
+| Sample | URL | What it demonstrates |
+|---|---|---|
+| `spirits-pass` | <https://ttb-label-verifier-pybx.onrender.com/sample/spirits-pass> | Clean distilled-spirits label; all 7 checklist fields PASS, audit panel shows the full `LabelData` JSON. |
+| `abv-fail` | <https://ttb-label-verifier-pybx.onrender.com/sample/abv-fail> | ABV mismatch (48.5% extracted vs 45.0% expected = 3.5 pp ≫ ±0.3 pp tolerance) → FAIL with `27 CFR 5.65(b)` citation, the delta surfaced as `3.50pp`. |
+| `warning-fail` | <https://ttb-label-verifier-pybx.onrender.com/sample/warning-fail> | Government warning text intact but `caps_correct=false` (title-case "Government Warning") → FAIL with `27 CFR 16.22` citation. |
 
-<!-- TODO: insert deployed-URL link + GIF for reviewers behind a firewall -->
+Other live routes worth clicking from the home page nav:
+- `/` — single-label upload form with auto-prefill on image pick (see [§5.7](#57-upload-prefill-flow) for the design rationale)
+- `/batch` — batch upload + SSE-streamed results + CSV export
+- `/eval` — in-app eval-suite dashboard (empty-state on deploy until `make eval` is run; see §9 for the offline numbers)
+- `/health` — liveness check
 
-The samples are wired in `app/main.py — `sample()` handler` and the asset pairs (`{name}.json`, `{name}.png`) live in `sample_data/`.
+### Smoke against the deployed URL
+
+Captured 2026-05-22:
+
+```
+GET /health                 → 200 OK, 183 ms, {"status":"ok","extractor":"gemini"}
+GET /sample/spirits-pass    → 200 OK, 219 ms, 10 KB (PASS banner + audit panel)
+GET /sample/abv-fail        → 200 OK, FAIL banner cites 27 CFR 5.65(b), 0.3pp tolerance
+GET /sample/warning-fail    → 200 OK, FAIL banner cites 27 CFR 16.22
+GET /eval                   → 200 OK, 3 KB (empty-state — Render fs starts clean; the
+                              dashboard correctly renders 'no eval results yet, run make eval'
+                              guidance instead of 404)
+GET /                       → 200 OK, 16 KB (form + HTMX wiring + Alpine verifyForm)
+```
+
+### Screenshots
+
+Captured from the live deployed URL via headless Chrome at 1280×1800. The 32×32 placeholder PNG in the sample fixtures is intentional — `sample_data/README.md` documents the swap-in path for real label images as the eval suite grows.
+
+| Page | Screenshot |
+|---|---|
+| Single-label upload form (`/`) | ![Home](docs/screenshots/home.png) |
+| `spirits-pass` — overall PASS, all 7 checklist fields green, raw-extraction audit panel visible | ![Sample: spirits-pass](docs/screenshots/sample-spirits-pass.png) |
+| `abv-fail` — overall FAIL, `alcohol_content` row highlighted red, reason surfaces the 3.50 pp delta + cites `27 CFR 5.65(b)` | ![Sample: abv-fail](docs/screenshots/sample-abv-fail.png) |
+| `warning-fail` — overall FAIL, `government_warning` row red, cites `27 CFR 16.22` (formatting layer of the two-layer warning check) | ![Sample: warning-fail](docs/screenshots/sample-warning-fail.png) |
+| `/eval` — empty-state guidance card on a fresh deploy (Render filesystem starts clean; `make eval` populates `eval/results/` locally → see [§9](#9-eval-results) for the actual numbers) | ![Eval dashboard empty-state](docs/screenshots/eval-empty.png) |
+
+The samples are wired in [`app/main.py`](app/main.py) (`sample()` handler), the fixture pairs (`{name}.json` + `{name}.png`) live in [`sample_data/`](sample_data/), and the result fragment template is [`app/templates/_result_panel.html`](app/templates/_result_panel.html).
 
 ---
 
