@@ -143,5 +143,5 @@ Phased breakdown of the build, mapped to PRD requirement IDs. Time-budget refere
 
 - [x] Clean commit history check (meaningful messages, no `.env` committed, `.gitignore` covers `.env`, `eval/results/`, `__pycache__`, `.venv`). (48 commits, 116 tracked files; `git ls-files` audit found zero leaked secrets/cache/venv.)
 - [x] Every "Definition of done" box from presearch §11 checked. (Audit in `docs/DEFINITION_OF_DONE.md`: 11/13 ✅ in code, 2/13 🟡 require your dashboard.)
-- [ ] Repo set to public on GitHub. <!-- requires `gh repo create ... --public` from your account; commands documented in DEFINITION_OF_DONE.md -->
+- [x] Repo set to public on GitHub. (Pushed 2026-05-21 to <https://github.com/seeincodes/ttb-label-verifier>, visibility=public.)
 - [x] README polish pass — read aloud, fix awkward phrasing, confirm every section is present. (11 sections + Decisions log all present; one drifted `main.py:365` line ref swapped to a symbol reference.)
