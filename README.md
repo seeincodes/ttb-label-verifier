@@ -185,7 +185,7 @@ For each of the seven TTB checklist fields, the design draws an explicit line be
 | Field | What the LLM does | What deterministic Python does |
 |---|---|---|
 | **Brand name** | Read the text off the label, return `{value, confidence}`. | Normalize (`normalize_text`, apostrophe deletion), `rapidfuzz.token_sort_ratio`, threshold 95/80 (`app/verifier/rules.py:104-105`). |
-| **Class / type** | Read the class designation (e.g. "Kentucky Straight Bourbon Whiskey"). | Fuzzy match with same thresholds; skip rule if beverage type doesn't require it per the §5.6 matrix (`_CLASS_TYPE_REQUIRED`, `app/verifier/rules.py:537`). |
+| **Class / type** | Read the class designation (e.g. "Kentucky Straight Bourbon Whiskey", "Table Wine"). | Fuzzy match with same thresholds; skip rule if beverage type doesn't require it per the §5.6 matrix. For wine, *also* checks `27 CFR 4.21` standard-of-identity bands — a 14.5 % wine labelled "Table Wine" FAILs on class designation even when the numeric ABV is within the §4.36 tolerance band (`_wine_class_boundary_check`). This is the regulatory subtlety reviewers test for: tolerance alone would silently PASS. |
 | **Alcohol content** | Return both the numeric percent *and* the raw text ("45% ALC./VOL. (90 PROOF)") as two separate `ExtractedField`s. | Numeric tolerance lookup by beverage (`tolerance_for`, `app/verifier/tolerances.py:42`); `\bABV\b` regex on the raw text (`app/verifier/rules.py:241`). The dual-field shape (`alcohol_content_pct` + `alcohol_content_text` in `app/models.py:118-119`) is what lets us run both checks without conflating them. |
 | **Net contents** | Read the volume string ("750 mL"). | `normalize_volume` + `volumes_equivalent` — 750 mL ↔ 0.75 L PASSes silently (`app/verifier/normalize.py`). Unparseable volume FAILs with an actionable reason, not a silent PASS. |
 | **Bottler name** | Read the bottler / producer name. | `strip_corporate_suffixes` (LLC, Inc., Co.) → normalize → fuzzy match (`app/verifier/rules.py:393-395`). |
@@ -210,7 +210,7 @@ Every CFR section that appears in source code, in a verifier docstring, or in a 
 
 | CFR section | Governs | Where in the code |
 |---|---|---|
-| `27 CFR 4.21` | Wine class / type designation | `app/verifier/rules.py:71` (`_CLASS_TYPE_CITATIONS[WINE]`); docstring `app/verifier/rules.py:214`. |
+| `27 CFR 4.21` | Wine class / type designation and standards of identity (e.g. "table wine" ≤14 % ABV, "dessert wine" 14–24 %) | `app/verifier/rules.py` (`_CLASS_TYPE_CITATIONS[WINE]` + `_wine_class_boundary_check` for the §4.21 class-vs-ABV consistency rule, STR6 — catches a 14.5 % wine labelled "Table Wine" even when the numeric ABV is within the §4.36 tolerance band). |
 | `27 CFR 4.32` | Wine brand name | `app/verifier/rules.py:64` (`_BRAND_CITATIONS[WINE]`); docstring `app/verifier/rules.py:191`. |
 | `27 CFR 4.35` | Wine bottler / producer name | `app/verifier/rules.py:85` (`_BOTTLER_CITATIONS[WINE]`); docstring `app/verifier/rules.py:387,414`. |
 | `27 CFR 4.36` | Wine ABV tolerances (±1.5 pp ≤14 %, ±1.0 pp >14 %) and abbreviation form | `app/verifier/tolerances.py:71-72`; `Tolerance.cfr_citation`. |
@@ -289,32 +289,34 @@ Every signal from the four discovery interviews (Sarah Chen, Dave Morrison, Jenn
 
 ## §9 Eval results
 
-The eval suite (`eval/harness.py`, runnable via `make eval`) processes 20 hand-authored JSON fixtures across 4 buckets — 5 easy / 5 hard image-quality / 5 violations / 5 edge cases (presearch §6.1). The fixtures bypass the live extractor and exercise the **deterministic verifier** path directly; `eval/test_set/GENERATION.md` documents the design of each bucket and `eval/README.md` documents the future real-image A/B-comparison harness.
+The eval suite (`eval/harness.py`, runnable via `make eval`) processes 21 hand-authored JSON fixtures across 4 buckets — 5 easy / 5 hard image-quality / 5 violations / 6 edge cases (presearch §6.1, with STR6 added as the 6th edge case). The fixtures bypass the live extractor and exercise the **deterministic verifier** path directly; `eval/test_set/GENERATION.md` documents the design of each bucket and `eval/README.md` documents the future real-image A/B-comparison harness.
 
-### Headline metrics — fixture-mode run, 2026-05-20
+### Headline metrics — fixture-mode run, 2026-05-22
 
 | Metric | Value | Target | Source |
 |---|---|---|---|
-| Overall verdict agreement (actual == expected per fixture) | **20 / 20** (100 %) | 100 % | `tests/test_harness_metrics.py::test_runs_all_fixtures_and_actual_matches_expected` |
+| Overall verdict agreement (actual == expected per fixture) | **21 / 21** (100 %) | 100 % | `tests/test_harness_metrics.py::test_runs_all_fixtures_and_actual_matches_expected` |
 | **False-positive rate** (PASS on a true violation) | **0.0000** | Minimise — the critical metric | `eval/harness.py:105` |
 | **False-negative rate** (FAIL on a valid label) | **0.0000** | Minimise — recoverable but costly | `eval/harness.py:123` |
-| Verdict distribution | 9 PASS / 2 WARN / 5 FAIL / 4 ERROR | Mirrors test-set composition | `eval/harness.py:165` |
+| Verdict distribution | 9 PASS / 2 WARN / 6 FAIL / 4 ERROR | Mirrors test-set composition | `eval/harness.py:165` |
 | Verifier latency (p50 / p95 / p99) | 0 / 0 / 0 ms | < 100 ms (verifier hot path) | sub-millisecond, dominated by string normalisation |
 | Cost per label | $0.00 | N/A in fixture mode | `eval/harness.py:70` — Gemini pricing ≈ $0.000167 / label in real-image mode |
 | Cache hit rate | N/A | N/A in fixture mode | placeholder in JSON for stable schema |
+
+The 6th FAIL is the STR6 `edge_table_wine_above_14pct` fixture — a 14.5 % wine labelled "Table Wine" against a COLA application that says 13.0 % ABV. The numeric ABV is within the ±1.5 pp §4.36 tolerance band, so an ABV-only verifier would silently PASS. The class-designation rule catches it (§4.21 standard-of-identity: table wine is ≤14 % ABV). Pinned by `tests/test_rules.py::TestWineClassBoundary` and `::test_str6_wine_class_boundary_surfaces_through_verify_label`.
 
 Per-field PASS rates on the checked-in fixtures:
 
 | Field | PASS rate | Why not 100 % |
 |---|---|---|
-| `brand_name` | 90 % | 2/20 fixtures intentionally fail (`edge_borderline_fuzzy_brand` → WARN, `hard_blurry_brand` → ERROR) |
-| `class_type` | 95 % | 1/20 (`hard_blurry_brand` co-fails class via correlated low confidence; canonical hard-class fixture WARNs not ERRORs) |
-| `alcohol_content` | 85 % | 3/20 — `violations_abv_abbreviation`, `violations_abv_over_tolerance`, `hard_blurry_abv_text` |
-| `net_contents` | 95 % | 1/20 — `hard_blurry_net_contents` ERROR |
+| `brand_name` | 90 % | 2/21 fixtures intentionally fail (`edge_borderline_fuzzy_brand` → WARN, `hard_blurry_brand` → ERROR) |
+| `class_type` | 90 % | 2/21 (`hard_blurry_brand` co-fails class via correlated low confidence; `edge_table_wine_above_14pct` FAILs on the §4.21 class-vs-ABV consistency rule) |
+| `alcohol_content` | 86 % | 3/21 — `violations_abv_abbreviation`, `violations_abv_over_tolerance`, `hard_blurry_abv_text` |
+| `net_contents` | 95 % | 1/21 — `hard_blurry_net_contents` ERROR |
 | `bottler_name` | 100 % | No fixtures target the bottler rule |
 | `bottler_address` | 100 % | No fixtures target the bottler address rule |
 | `country_of_origin` | 50 % | Rule only runs on 2 import fixtures; 1 of those is `violations_wrong_country` FAIL by design |
-| `government_warning` | 85 % | 3/20 — `violations_warning_missing_clause`, `violations_warning_formatting`, `hard_blurry_warning_formatting` |
+| `government_warning` | 86 % | 3/21 — `violations_warning_missing_clause`, `violations_warning_formatting`, `hard_blurry_warning_formatting` |
 
 ### A/B comparison (Gemini 2.5 Flash vs. OpenAI GPT-4o)
 

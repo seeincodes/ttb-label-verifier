@@ -1,0 +1,15 @@
+{
+  "bucket": "edge_cases",
+  "expected_overall": "fail",
+  "notes": "STR6 / 27 CFR 4.21 — wine labelled 'Table Wine' at 14.5% ABV. The numeric ABV (14.5 vs application 13.0) is within ±1.5pp per 4.36, so a tolerance-only verifier would silently PASS. BUT §4.21 defines 'table wine' as ≤14% ABV — the class designation itself is the violation. check_class_type fires the class-vs-ABV consistency rule and FAILs with the 4.21 citation. This is the kind of regulatory subtlety the presearch §2 flagged as a Dave-Morrison-grade case reviewers test for.",
+  "application": {
+    "beverage_type":        "wine",
+    "brand_name":           "Valley Springs",
+    "class_type":           "Table Wine",
+    "alcohol_content_pct":  13.0,
+    "net_contents":         "750 mL",
+    "bottler_name":         "Valley Springs Winery",
+    "bottler_address":      "3120 Vine Trail, St. Helena, CA 94574",
+    "is_import":            false
+  }
+}

@@ -204,14 +204,94 @@ def check_brand_name(
     )
 
 
+# ---------------------------------------------------------------------------
+# Wine class-designation ABV boundaries (27 CFR 4.21, STR6)
+# ---------------------------------------------------------------------------
+#
+# 4.21 defines wine "standards of identity" — among them, class-of-trade
+# names that imply an ABV range. Mis-labelling a 14.5% wine as "table wine"
+# is a class-designation violation EVEN WHEN the numeric ABV is within the
+# ±1.5pp tolerance band of 4.36 (the tolerance covers measurement noise on
+# the *declared* ABV, not the class-of-trade definition).
+#
+# Coverage starts narrow with the two §4.21 standards most likely to appear
+# on a real label. Sparkling-wine and special-natural-wine classes have
+# different rules (e.g. effervescence under §4.21(b)) and aren't enforced
+# here. The dict is sorted longest-substring-first so "Light Red Wine"
+# matches "Light Wine" before "Wine" if both were in the table.
+_WINE_CLASS_ABV_BANDS = (
+    # (substring → (min_inclusive, max_inclusive, friendly_name))
+    ("table wine",     (None, 14.0, "table wine")),
+    ("light wine",     (None, 14.0, "light wine")),
+    ("dessert wine",   (14.0, 24.0, "dessert wine")),
+)
+
+
+def _wine_class_boundary_check(
+    class_text: str, abv_pct: float
+) -> Optional[FieldVerdict]:
+    """Return a FAIL `FieldVerdict` if `class_text` names a §4.21 class
+    whose ABV band excludes `abv_pct`; otherwise None.
+
+    Substring match on the lowercased class name. The first matching band
+    wins (table-wine entries precede 'dessert wine' which precedes the
+    generic 'wine' if it were added later). Returns None if the class
+    doesn't name a bounded §4.21 standard — generic regional / varietal
+    designations (e.g. 'Napa Valley Cabernet Sauvignon') aren't capped.
+    """
+    haystack = class_text.lower()
+    for needle, (lo, hi, friendly) in _WINE_CLASS_ABV_BANDS:
+        if needle not in haystack:
+            continue
+        # Found a §4.21 class. Check the ABV against its band.
+        below = lo is not None and abv_pct < lo
+        above = hi is not None and abv_pct > hi
+        if not (below or above):
+            return None  # inside band — defer to caller's fuzzy verdict
+        band_desc = []
+        if lo is not None:
+            band_desc.append(f"≥ {lo}%")
+        if hi is not None:
+            band_desc.append(f"≤ {hi}%")
+        band_str = " and ".join(band_desc)
+        side = "above" if above else "below"
+        return FieldVerdict(
+            verdict=Verdict.FAIL,
+            reason=(
+                f"label class '{class_text}' is a 27 CFR 4.21 standard-of-identity "
+                f"for {friendly} ({band_str} ABV), but the extracted ABV "
+                f"{abv_pct}% is {side} that band — class-designation violation "
+                "even though the numeric ABV is within the §4.36 tolerance band"
+            ),
+            cfr_citation="27 CFR 4.21",
+            comparison_method="class_abv_boundary",
+            evidence={
+                "class_text": class_text,
+                "extracted_abv_pct": abv_pct,
+                "class_band_min": lo,
+                "class_band_max": hi,
+            },
+        )
+    return None
+
+
 def check_class_type(
     extracted: ExtractedField[str],
     expected: Optional[str],
     beverage: BeverageType,
+    *,
+    extracted_abv_pct: Optional[float] = None,
 ) -> FieldVerdict:
     """Verify class / type designation.
 
     Cite: 27 CFR 5.35 (spirits), 4.21 (wine), 7.22 (malt).
+
+    When `beverage` is wine and `extracted_abv_pct` is supplied, also runs
+    the §4.21 class-vs-ABV consistency check (STR6) — catches mislabelling
+    a 14.5% wine as "table wine" even when the numeric ABV is within the
+    ±1.5pp tolerance of 4.36. The class-mismatch (fuzzy < threshold) verdict
+    takes precedence; the boundary check only fires when the class would
+    otherwise PASS.
     """
     citation = _CLASS_TYPE_CITATIONS[beverage]
     if expected is None:
@@ -226,13 +306,27 @@ def check_class_type(
         return _confidence_error("class/type", "fuzzy_token_sort", extracted)
 
     score = _fuzzy_score(extracted.value, expected)
-    return _fuzzy_verdict(
+    primary = _fuzzy_verdict(
         extracted_value=extracted.value,
         expected=expected,
         score=score,
         field_label="class/type",
         citation=citation,
     )
+
+    # If the fuzzy check is anything other than PASS, the class-mismatch
+    # verdict wins — we don't pile on a second 4.21 violation.
+    if primary.verdict is not Verdict.PASS:
+        return primary
+
+    # The class matches the application — now check whether it's a §4.21
+    # standard-of-identity whose ABV band excludes the extracted value.
+    if beverage is BeverageType.WINE and extracted_abv_pct is not None:
+        boundary = _wine_class_boundary_check(extracted.value, extracted_abv_pct)
+        if boundary is not None:
+            return boundary
+
+    return primary
 
 
 # Regex matching the prohibited literal "ABV" — case-insensitive standalone
@@ -574,9 +668,15 @@ def verify_label(
     )
 
     # 2. Class / type — conditional on beverage type.
+    # The extracted ABV is forwarded so the wine §4.21 class-vs-ABV
+    # consistency rule (STR6) can fire when applicable.
+    extracted_abv_for_class = label.alcohol_content_pct.value
     if _CLASS_TYPE_REQUIRED[beverage]:
         verdicts["class_type"] = check_class_type(
-            label.class_type, application.class_type, beverage
+            label.class_type,
+            application.class_type,
+            beverage,
+            extracted_abv_pct=extracted_abv_for_class,
         )
     elif application.class_type is not None:
         # Optional for this beverage type but the agent supplied an
@@ -593,7 +693,10 @@ def verify_label(
             )
         else:
             verdicts["class_type"] = check_class_type(
-                label.class_type, application.class_type, beverage
+                label.class_type,
+                application.class_type,
+                beverage,
+                extracted_abv_pct=extracted_abv_for_class,
             )
     # else: application gave us no expected value AND beverage doesn't
     # require it — silently skip per §5.6.
