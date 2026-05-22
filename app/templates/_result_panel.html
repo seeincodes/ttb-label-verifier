@@ -1,88 +1,133 @@
-{# Single-label result fragment. NEVER wrap in <html>/<body> — HTMX swaps
-   the innerHTML of #result-panel and a full document blows the layout up
-   (see ERROR_FIX_LOG: 'HTMX fragment responses must NOT include the full
-   HTML shell'). #}
+{# Single-label result fragment. This is a fragment, never a full
+   document — HTMX swaps it into #result-panel, so no DOCTYPE and no
+   document shell (see ERROR_FIX_LOG: 'HTMX fragment responses must
+   NOT include the full HTML shell').
 
-{# Verdict-banner color classes per §5.4. Keep the mapping in one place
-   so a verdict added in the model gets one Tailwind class change here. #}
-{% set banner_classes = {
-  "pass":  "border-emerald-300 bg-emerald-50 text-emerald-900",
-  "warn":  "border-amber-300 bg-amber-50 text-amber-900",
-  "fail":  "border-red-300 bg-red-50 text-red-900",
-  "error": "border-slate-300 bg-slate-100 text-slate-900",
-} %}
-{% set row_classes = {
-  "pass":  "bg-emerald-50 text-emerald-900",
-  "warn":  "bg-amber-50 text-amber-900",
-  "fail":  "bg-red-50 text-red-900",
-  "error": "bg-slate-100 text-slate-900",
-} %}
+   Editorial-regulatory layout:
+     1. CARTOUCHE — display-serif headline ("Ruling — FAIL"), oxblood seal
+        marks on a FAIL, hairline rules, the case-file-style "No." metadata
+        line. The verdict feels like a regulatory finding, not a status pill.
+     2. DOCKET — per-field table with hairline rows, tabular numerals,
+        marginal CFR citations rather than a cramped column. Disagreement
+        rows carry a left-edge oxblood band.
+     3. EXHIBIT — collapsible raw-extraction <details> still present for
+        MVP4 auditability, restyled as a section divider. #}
 
-<article class="rounded-lg border bg-white shadow-sm
-                {{ banner_classes[result.overall.value] }} p-6">
-  <header class="flex flex-wrap items-start justify-between gap-4">
-    <div>
-      <div class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider
-                  {{ banner_classes[result.overall.value] }}">
-        <span aria-hidden="true">●</span>
-        <span>{{ result.overall.value.upper() }}</span>
+{# Verdict-tone tokens — one place to add/edit if the model adds a new
+   verdict. Each block contains: badge bg/border/text, headline accent,
+   row-edge color, and the cartouche "ruling word". #}
+{% set verdict_tone = {
+  "pass":  {"label": "Pass",  "ink": "verdict-pass",  "edge": "bg-verdict-pass",  "wash": "bg-verdict-pass/5"},
+  "warn":  {"label": "Warn",  "ink": "verdict-warn",  "edge": "bg-verdict-warn",  "wash": "bg-verdict-warn/5"},
+  "fail":  {"label": "Fail",  "ink": "verdict-fail",  "edge": "bg-verdict-fail",  "wash": "bg-verdict-fail/5"},
+  "error": {"label": "Error", "ink": "verdict-error", "edge": "bg-verdict-error", "wash": "bg-verdict-error/5"},
+} %}
+{% set overall_tone = verdict_tone[result.overall.value] %}
+
+<article class="border border-rule bg-paper">
+  {# ───────────────────────── CARTOUCHE ───────────────────────── #}
+  <header class="cartouche-stamp relative overflow-hidden">
+    {# Left edge band carries the verdict tone — vertical oxblood/emerald/etc. #}
+    <div class="absolute inset-y-0 left-0 w-1 {{ overall_tone.edge }}" aria-hidden="true"></div>
+
+    <div class="grid grid-cols-1 gap-6 px-10 py-8 md:grid-cols-[1fr_auto] md:items-start">
+      <div>
+        <p class="rubric text-{{ overall_tone.ink }} tabular">
+          Ruling · {{ result.extractor_used }} · {{ result.latency_ms }} ms{% if result.cache_hit %} · cache hit{% endif %}{% if result.fallback_used %} · fallback used{% endif %}
+        </p>
+        <h2 class="display mt-3 text-6xl font-light leading-none text-{{ overall_tone.ink }} sm:text-7xl">
+          {{ overall_tone.label }}<span class="text-{{ overall_tone.ink }}">.</span>
+        </h2>
+        <p class="mt-5 max-w-2xl text-[15px] leading-relaxed text-ink-muted">
+          {% if result.overall.value == 'pass' %}
+            All applicable checklist fields cleared the deterministic verifier. Cosmetic
+            differences (case, punctuation, unit equivalence) were silently accepted; the
+            audit panel below records exactly what was compared.
+          {% elif result.overall.value == 'warn' %}
+            The verifier surfaced at least one borderline match. Review the highlighted
+            rows; nothing here is auto-accepted.
+          {% elif result.overall.value == 'fail' %}
+            One or more fields violate a 27 CFR requirement. See the highlighted rows
+            below for the cited section and the exact comparison evidence.
+          {% else %}
+            The verifier could not assert a verdict on at least one required field. Review
+            the highlighted rows and reshoot or escalate as needed.
+          {% endif %}
+        </p>
       </div>
-      <h2 class="mt-3 text-lg font-semibold tracking-tight text-slate-900">Verification result</h2>
-      <p class="text-xs text-slate-500">
-        Extractor: {{ result.extractor_used }} · Latency: {{ result.latency_ms }} ms
-        {% if result.cache_hit %} · cache hit{% endif %}
-        {% if result.fallback_used %} · fallback used{% endif %}
-      </p>
-    </div>
-    <div class="rounded-md border border-slate-200 bg-slate-50 p-2">
-      <img src="data:{{ image_mime }};base64,{{ image_b64 }}"
-           alt="Submitted label"
-           class="max-h-32 max-w-[16rem] rounded" />
+
+      {# Submitted-label thumbnail — framed like a docket exhibit, not a UI tile. #}
+      <figure class="border border-rule bg-paper-inset p-2 md:w-56">
+        <img src="data:{{ image_mime }};base64,{{ image_b64 }}"
+             alt="Submitted label"
+             class="block max-h-40 w-full object-contain" />
+        <figcaption class="rubric mt-2 text-center text-ink-faint">Exhibit · Submitted label</figcaption>
+      </figure>
     </div>
   </header>
 
-  <table class="mt-6 w-full overflow-hidden rounded-md border border-slate-200 text-left text-sm">
-    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600">
-      <tr>
-        <th class="px-3 py-2">Field</th>
-        <th class="px-3 py-2">Extracted</th>
-        <th class="px-3 py-2">Expected</th>
-        <th class="px-3 py-2">Verdict</th>
-        <th class="px-3 py-2">Reasoning &amp; CFR citation</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-200 bg-white">
-      {% for field_name, fv in result.field_verdicts.items() %}
-        <tr class="{{ row_classes[fv.verdict.value] }}">
-          <td class="px-3 py-2 font-medium">{{ field_name }}</td>
-          <td class="px-3 py-2 align-top">
-            <code class="text-xs">{{ extracted_display[field_name] | default("—") }}</code>
-          </td>
-          <td class="px-3 py-2 align-top">
-            <code class="text-xs">{{ expected_display[field_name] | default("—") }}</code>
-          </td>
-          <td class="px-3 py-2 align-top font-semibold uppercase tracking-wider">
-            {{ fv.verdict.value }}
-          </td>
-          <td class="px-3 py-2 align-top text-xs">
-            {% if fv.reason %}
-              <p>{{ fv.reason }}</p>
-            {% endif %}
-            {% if fv.cfr_citation %}
-              <p class="mt-1 text-[10px] uppercase tracking-wider text-slate-500">
-                cite: {{ fv.cfr_citation }}
-              </p>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {# ───────────────────────── DOCKET — per-field table ───────────────────────── #}
+  <section class="border-t border-rule px-10 py-8">
+    <div class="hairline-with-seal mb-6">
+      <span class="rubric text-ink">Docket · Per-field verdicts</span>
+    </div>
 
-  <details class="mt-6 rounded-md border border-slate-200 bg-slate-50 p-3">
-    <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-slate-600">
-      view raw extraction (audit panel)
+    <table class="w-full border-collapse text-left text-sm">
+      <thead>
+        <tr class="border-b border-ink">
+          <th class="rubric pb-3 pr-4 text-ink">Field</th>
+          <th class="rubric pb-3 pr-4 text-ink">Extracted from label</th>
+          <th class="rubric pb-3 pr-4 text-ink">Expected (COLA)</th>
+          <th class="rubric pb-3 pr-4 text-ink">Verdict</th>
+          <th class="rubric pb-3 text-ink">Reasoning &amp; citation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for field_name, fv in result.field_verdicts.items() %}
+          {% set row_tone = verdict_tone[fv.verdict.value] %}
+          {% set is_disagree = fv.verdict.value != 'pass' %}
+          <tr class="border-b border-rule align-top {{ row_tone.wash if is_disagree else '' }}">
+            {# Left-edge tone bar — only shows when the row disagrees. #}
+            <td class="relative py-3 pr-4 font-medium text-ink">
+              {% if is_disagree %}
+                <span class="absolute inset-y-0 left-0 -ml-10 w-1 {{ row_tone.edge }}" aria-hidden="true"></span>
+              {% endif %}
+              <span class="mono-display block font-mono text-[12px] text-ink-faint">§</span>
+              <span class="block">{{ field_name }}</span>
+            </td>
+            <td class="py-3 pr-4">
+              <code class="block whitespace-pre-line break-words font-mono text-[12px] leading-snug text-ink">{{ extracted_display[field_name] | default("—") }}</code>
+            </td>
+            <td class="py-3 pr-4">
+              <code class="block whitespace-pre-line break-words font-mono text-[12px] leading-snug text-ink-muted">{{ expected_display[field_name] | default("—") }}</code>
+            </td>
+            <td class="py-3 pr-4">
+              <span class="rubric tabular text-{{ row_tone.ink }}">{{ row_tone.label }}</span>
+            </td>
+            <td class="py-3">
+              {% if fv.reason %}
+                <p class="text-[13px] leading-snug text-ink">{{ fv.reason }}</p>
+              {% endif %}
+              {% if fv.cfr_citation %}
+                {# Citation as a marginal "stamp" — small caps, oxblood, tabular nums. #}
+                <p class="rubric tabular mt-2 inline-block border border-{{ row_tone.ink }}/30 bg-paper px-2 py-0.5 text-{{ row_tone.ink }}">
+                  Cite · {{ fv.cfr_citation }}
+                </p>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {# ───────────────────────── EXHIBIT — collapsible raw JSON ───────────────────────── #}
+  <details class="group border-t border-rule px-10 py-6">
+    <summary class="hairline-with-seal cursor-pointer">
+      <span class="rubric flex-1 text-ink-muted group-open:text-ink">
+        Exhibit · View raw extraction (audit panel)
+      </span>
     </summary>
-    <pre class="mt-3 overflow-x-auto text-[11px] leading-snug text-slate-800">{{ raw_extraction_json }}</pre>
+    <pre class="mt-5 overflow-x-auto border border-rule bg-paper-inset px-5 py-4 text-[11px] leading-relaxed text-ink">{{ raw_extraction_json }}</pre>
   </details>
 </article>

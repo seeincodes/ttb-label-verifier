@@ -191,14 +191,16 @@ class TestGetIndex:
     def test_prefill_visual_cue_present(self):
         """Pre-filled fields must look different so the agent eyes are drawn
         to whether they confirmed/edited each one before clicking Verify.
-        Either an amber ring/border or a 'suggested' label per field."""
+        Either an amber-family ring/border or a 'suggested' label per field.
+        Accepts Tailwind opacity-modified syntax (`amber-700/40`) since the
+        editorial redesign uses tonal amber against cream paper rather than
+        the saturated amber-300 of the original."""
         from app.main import app
 
         client = TestClient(app)
         body = client.get("/").text
-        # Amber styling is the visual cue; (suggested) text is the
-        # textual cue. Either / both is acceptable; both are checked.
-        assert "amber-300" in body or "amber-50" in body
+        # Visual cue: any amber-family class. Textual cue: "suggested" word.
+        assert "amber-" in body, "no amber-family prefill styling found"
         assert "suggested" in body.lower()
 
     def test_prefill_runs_in_background_not_blocking(self):
@@ -298,9 +300,10 @@ class TestPostVerify:
         assert "data:image" in body.lower()
 
     def test_response_includes_verdict_banner_color_class(self, make_client):
-        """Verdict banner has a color class per §5.4: green/yellow/red/gray.
-        Use any of green-* / yellow-* / red-* / gray-* / slate-* Tailwind
-        class names."""
+        """Verdict banner carries a verdict-tone class per §5.4. Accepts
+        either the original Tailwind palette names (bg-emerald, bg-green)
+        or the editorial-design verdict-* semantic tokens (verdict-pass etc.).
+        What matters is the *contract*: a distinct visual token per verdict."""
         client, _ = make_client(_fake_label())
         body = client.post("/verify", data=_form_data(), files=_files()).text
         assert (
@@ -308,7 +311,8 @@ class TestPostVerify:
             or "bg-emerald" in body
             or "border-green" in body
             or "border-emerald" in body
-        ), "PASS verdict must use a green-family Tailwind class"
+            or "verdict-pass" in body
+        ), "PASS verdict must carry a green-family or verdict-pass tone class"
 
     def test_response_includes_per_field_table_columns(self, make_client):
         """Per MVP4: table shows extracted | expected | verdict | reasoning |
@@ -323,7 +327,10 @@ class TestPostVerify:
         assert "cfr" in body or "27 cfr" in body or "reason" in body
 
     def test_fail_label_shows_red_banner(self, make_client):
-        """ABV 'ABV' literal on the label → FAIL → red banner."""
+        """ABV 'ABV' literal on the label → FAIL → red-family tone class.
+        Accepts the original Tailwind palette names (bg-red, bg-rose) or
+        the editorial-design semantic tokens (verdict-fail, the oxblood
+        --seal). The contract is "visually distinguishable as a FAIL"."""
         client, _ = make_client(_fake_label(abv_text="45% ABV"))
         body = client.post("/verify", data=_form_data(), files=_files()).text
         assert "FAIL" in body or "Fail" in body
@@ -332,7 +339,8 @@ class TestPostVerify:
             or "bg-rose" in body
             or "border-red" in body
             or "border-rose" in body
-        ), "FAIL verdict must use a red-family Tailwind class"
+            or "verdict-fail" in body
+        ), "FAIL verdict must carry a red-family or verdict-fail tone class"
 
     def test_raw_extraction_panel_present(self, make_client):
         """MVP4 audit-panel signal: a collapsible 'view raw extraction'

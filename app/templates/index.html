@@ -1,218 +1,298 @@
 {% extends "base.html" %}
 
-{% block title %}TTB Label Verification — Single label{% endblock %}
+{% block title %}TTB Label Verification — Verify a label{% endblock %}
 
 {% block content %}
-  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-    <h1 class="text-xl font-semibold tracking-tight">Verify a label</h1>
-    <p class="mt-2 text-sm text-slate-600">
-      Upload a label image and the application data it was submitted with. The tool extracts the
-      label fields via vision AI ({{ extractor }}) and compares them to the expected values using
-      deterministic rules grounded in 27 CFR. Verdicts cite the specific regulation inline.
-    </p>
+  {# Editorial layout: 12-col grid; lead column carries the headline + form,
+     right rail carries the rubric, sample dispatches, and the standing
+     "two-source" note that explains the design philosophy. Asymmetric, but
+     the form is still left-aligned and full-bleed at narrow widths. #}
+  <div class="reveal-stack grid grid-cols-1 gap-12 lg:grid-cols-[1fr_18rem]">
 
-    <div class="mt-6 flex flex-wrap items-center gap-2 text-sm">
-      <span class="text-slate-600">Try a sample label:</span>
-      <a href="/sample/spirits-pass"
-         class="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800 hover:bg-emerald-100">
-        spirits-pass
-      </a>
-      <a href="/sample/abv-fail"
-         class="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 font-medium text-red-800 hover:bg-red-100">
-        abv-fail
-      </a>
-      <a href="/sample/warning-fail"
-         class="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 font-medium text-red-800 hover:bg-red-100">
-        warning-fail
-      </a>
-    </div>
+    {# ──────────────────────── LEAD COLUMN ──────────────────────── #}
+    <article>
+      <p class="rubric text-seal">Single label · Verify against application</p>
+      <h1 class="display mt-4 text-5xl font-light leading-[0.95] text-ink sm:text-6xl">
+        Verify a&nbsp;label<span class="text-seal">.</span>
+      </h1>
+      <p class="mt-6 max-w-2xl text-base leading-relaxed text-ink-muted">
+        Upload the label image and the application data it was submitted with. Vision AI
+        (<span class="font-medium text-ink">{{ extractor }}</span>)
+        extracts the seven checklist fields; a deterministic verifier compares them to your
+        expected values and cites the 27 CFR section behind every WARN, FAIL, or ERROR.
+      </p>
 
-    <form id="verify-form"
-          class="mt-8 grid gap-6"
-          enctype="multipart/form-data"
-          hx-post="/verify"
-          hx-target="#result-panel"
-          hx-swap="innerHTML"
-          hx-encoding="multipart/form-data"
-          hx-indicator="#verify-spinner"
-          x-data="verifyForm()"
-          @reset="resetPrefill()">
+      {# ──────────────────── form ──────────────────── #}
+      <form id="verify-form"
+            class="mt-10"
+            enctype="multipart/form-data"
+            hx-post="/verify"
+            hx-target="#result-panel"
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data"
+            hx-indicator="#verify-spinner"
+            x-data="verifyForm()"
+            @reset="resetPrefill()">
 
-      <!-- Image upload + Alpine preview + prefill trigger -->
-      <div>
-        <label for="image" class="block text-sm font-medium text-slate-700">Label image (JPG / PNG)</label>
-        <input type="file"
-               id="image"
-               name="image"
-               accept="image/jpeg,image/png"
-               required
-               @change="onPick($event)"
-               class="mt-2 block w-full text-sm text-slate-600
-                      file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-4 file:py-2
-                      file:text-sm file:font-medium file:text-white hover:file:bg-slate-700" />
+        {# Section ① — label image #}
+        <fieldset>
+          <legend class="hairline-with-seal mb-6 w-full">
+            <span class="rubric text-ink">① Label image</span>
+          </legend>
 
-        <!-- Extraction-in-progress indicator. The fetch runs in the
-             background — the form is fully usable while we wait. -->
-        <p x-show="extracting"
-           class="mt-2 inline-flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 ring-1 ring-slate-200"
-           role="status" aria-live="polite">
-          <svg class="h-3 w-3 animate-spin text-slate-700" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-          </svg>
-          <span>
-            Reading the label in the background to prefill empty fields&hellip;
-            (<span x-text="elapsedSeconds"></span>s elapsed). You can start typing now — we won&rsquo;t overwrite what you type.
-          </span>
-        </p>
-        <p x-show="prefillSummary" x-text="prefillSummary"
-           class="mt-2 text-xs text-amber-700"></p>
-        <p x-show="prefillError" x-text="prefillError"
-           class="mt-2 text-xs text-red-700"></p>
+          <div class="grid grid-cols-1 gap-8 md:grid-cols-[1fr_18rem]">
+            <div>
+              <label for="image" class="rubric mb-3 block text-ink-muted">Choose file · JPG or PNG</label>
+              <input type="file"
+                     id="image"
+                     name="image"
+                     accept="image/jpeg,image/png"
+                     required
+                     @change="onPick($event)"
+                     class="block w-full text-sm text-ink
+                            file:mr-4 file:rounded-none file:border file:border-ink file:bg-ink file:px-5 file:py-2.5
+                            file:text-[11px] file:font-semibold file:uppercase file:tracking-rubric file:text-paper
+                            hover:file:bg-seal hover:file:border-seal cursor-pointer" />
 
-        <template x-if="previewUrl">
-          <div class="mt-3 inline-block rounded-md border border-slate-200 bg-slate-50 p-2">
-            <img :src="previewUrl" alt="Label preview" class="max-h-64 max-w-xs rounded" />
+              {# Background-prefill indicator. Uses the cream paper inset so it
+                 reads as inline guidance, not a modal pop-up. #}
+              <output x-show="extracting"
+                      class="mt-4 flex items-start gap-3 border-l-2 border-seal bg-paper-inset px-4 py-3 text-sm text-ink"
+                      aria-live="polite">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 animate-spin text-seal" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                  <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <span class="leading-snug">
+                  <span class="rubric block text-seal">Reading label · Background</span>
+                  <span class="tabular text-ink-muted">
+                    <span x-text="elapsedSeconds">0</span>s elapsed
+                  </span>
+                  <span class="mt-1 block text-ink">
+                    Start typing now — your values will not be overwritten.
+                  </span>
+                </span>
+              </output>
+
+              <p x-show="prefillSummary" x-text="prefillSummary"
+                 class="mt-4 border-l-2 border-amber-700/50 bg-amber-700/5 px-4 py-3 text-xs text-amber-900"></p>
+              <p x-show="prefillError" x-text="prefillError"
+                 class="mt-4 border-l-2 border-seal bg-seal/5 px-4 py-3 text-xs text-seal"></p>
+            </div>
+
+            {# Preview thumbnail — kept compact, framed like a contact-sheet cell. #}
+            <template x-if="previewUrl">
+              <figure class="border border-rule bg-paper-inset p-2">
+                <img :src="previewUrl" alt="Label preview" class="block max-h-56 w-full object-contain" />
+                <figcaption class="rubric mt-2 text-center text-ink-faint">Preview</figcaption>
+              </figure>
+            </template>
+            <template x-if="!previewUrl">
+              <div class="flex items-center justify-center border border-dashed border-rule bg-paper-inset/40 p-4 text-center">
+                <span class="rubric text-ink-faint">No file selected</span>
+              </div>
+            </template>
           </div>
-        </template>
+        </fieldset>
+
+        {# Section ② — application data #}
+        <fieldset class="mt-12">
+          <legend class="hairline-with-seal mb-6 w-full">
+            <span class="rubric text-ink">② Application data · Expected truth (COLA)</span>
+          </legend>
+
+          {# Beverage type — full width, sets the regulatory frame. #}
+          <div class="mb-8">
+            <label for="beverage_type" class="rubric mb-2 block text-ink-muted">Beverage type · 27 CFR Part</label>
+            <select name="beverage_type" id="beverage_type" required
+                    x-model="fields.beverage_type"
+                    @input="noteAgentTyped('beverage_type')"
+                    :class="prefillClass('beverage_type', 'field-input field-select font-medium')">
+              <option value="distilled_spirits">Distilled spirits — Part 5 (whiskey, vodka, gin)</option>
+              <option value="wine">Wine — Part 4</option>
+              <option value="malt_beverage">Malt beverage — Part 7 (beer, ale)</option>
+              <option value="other">Other — RTD / hard seltzer / cider ≥7%</option>
+            </select>
+          </div>
+
+          {# Seven checklist fields in an asymmetric grid. #}
+          <div class="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
+            <div>
+              <label for="brand_name" class="rubric mb-2 block text-ink-muted">
+                Brand name
+                <span x-show="prefilled.brand_name" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="text" name="brand_name" id="brand_name" required
+                     placeholder="Old Tom Distillery"
+                     x-model="fields.brand_name"
+                     @input="noteAgentTyped('brand_name')"
+                     :class="prefillClass('brand_name', 'field-input')" />
+            </div>
+            <div>
+              <label for="class_type" class="rubric mb-2 block text-ink-muted">
+                Class / type
+                <span x-show="prefilled.class_type" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="text" name="class_type" id="class_type"
+                     placeholder="Kentucky Straight Bourbon Whiskey"
+                     x-model="fields.class_type"
+                     @input="noteAgentTyped('class_type')"
+                     :class="prefillClass('class_type', 'field-input')" />
+            </div>
+            <div>
+              <label for="alcohol_content_pct" class="rubric mb-2 block text-ink-muted">
+                ABV · Percent
+                <span x-show="prefilled.alcohol_content_pct" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="number" step="0.1" min="0" max="100"
+                     name="alcohol_content_pct" id="alcohol_content_pct"
+                     placeholder="45.0"
+                     x-model="fields.alcohol_content_pct"
+                     @input="noteAgentTyped('alcohol_content_pct')"
+                     :class="prefillClass('alcohol_content_pct', 'field-input tabular')" />
+            </div>
+            <div>
+              <label for="net_contents" class="rubric mb-2 block text-ink-muted">
+                Net contents
+                <span x-show="prefilled.net_contents" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="text" name="net_contents" id="net_contents" required
+                     placeholder="750 mL"
+                     x-model="fields.net_contents"
+                     @input="noteAgentTyped('net_contents')"
+                     :class="prefillClass('net_contents', 'field-input')" />
+            </div>
+            <div>
+              <label for="bottler_name" class="rubric mb-2 block text-ink-muted">
+                Bottler name
+                <span x-show="prefilled.bottler_name" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="text" name="bottler_name" id="bottler_name" required
+                     placeholder="Old Tom Distillery LLC"
+                     x-model="fields.bottler_name"
+                     @input="noteAgentTyped('bottler_name')"
+                     :class="prefillClass('bottler_name', 'field-input')" />
+            </div>
+            <div>
+              <label for="bottler_address" class="rubric mb-2 block text-ink-muted">
+                Bottler address
+                <span x-show="prefilled.bottler_address" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested · confirm</span>
+              </label>
+              <input type="text" name="bottler_address" id="bottler_address" required
+                     placeholder="123 Distillery Rd, Frankfort, KY"
+                     x-model="fields.bottler_address"
+                     @input="noteAgentTyped('bottler_address')"
+                     :class="prefillClass('bottler_address', 'field-input')" />
+            </div>
+          </div>
+
+          {# Import row — half-width checkbox + half-width country, only the country has the prefill ring. #}
+          <div class="mt-10 grid grid-cols-1 items-end gap-x-10 gap-y-6 md:grid-cols-2">
+            <label class="flex cursor-pointer items-center gap-3 select-none">
+              <input type="checkbox" name="is_import" id="is_import" value="true"
+                     x-model="fields.is_import"
+                     @change="noteAgentTyped('is_import'); noteAgentTyped('country_of_origin')"
+                     class="h-4 w-4 cursor-pointer appearance-none border border-ink bg-paper checked:bg-seal checked:border-seal focus-visible:outline-2 focus-visible:outline-seal" />
+              <span class="rubric text-ink">
+                This label is imported
+                <span x-show="prefilled.is_import" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested</span>
+              </span>
+            </label>
+            <div>
+              <label for="country_of_origin" class="rubric mb-2 block text-ink-muted">
+                Country of origin
+                <span class="ml-1 normal-case tracking-normal text-[10px] italic text-ink-faint">if import</span>
+                <span x-show="prefilled.country_of_origin" class="ml-1 normal-case tracking-normal text-[10px] italic text-seal">suggested</span>
+              </label>
+              <input type="text" name="country_of_origin" id="country_of_origin"
+                     placeholder="Scotland"
+                     x-model="fields.country_of_origin"
+                     @input="noteAgentTyped('country_of_origin')"
+                     :class="prefillClass('country_of_origin', 'field-input')" />
+            </div>
+          </div>
+        </fieldset>
+
+        {# CTA + verify spinner. #}
+        <div class="mt-12 flex flex-wrap items-center gap-6 border-t border-rule pt-8">
+          <button type="submit" class="btn-seal">
+            Verify ▸
+          </button>
+          <output id="verify-spinner"
+                  class="htmx-indicator inline-flex items-center gap-2 text-sm text-ink-muted"
+                  aria-live="polite">
+            <svg class="h-4 w-4 animate-spin text-seal" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+              <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span class="rubric">Verifying · Typically 2–5&nbsp;s</span>
+          </output>
+        </div>
+      </form>
+    </article>
+
+    {# ──────────────────────── RIGHT RAIL ──────────────────────── #}
+    <aside class="lg:sticky lg:top-10 lg:self-start">
+      <div class="border border-rule bg-paper-inset/60 px-6 py-7">
+        <p class="rubric text-seal">Try a sample · No upload required</p>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li>
+            <a href="/sample/spirits-pass"
+               class="group flex items-baseline justify-between gap-3 no-underline">
+              <span>
+                <span class="display-tight text-lg font-medium text-ink group-hover:text-seal">spirits-pass</span>
+                <span class="block text-[11px] text-ink-faint">Clean bourbon · all 7 fields pass</span>
+              </span>
+              <span class="rubric text-verdict-pass">PASS</span>
+            </a>
+          </li>
+          <li class="border-t border-rule pt-3">
+            <a href="/sample/abv-fail"
+               class="group flex items-baseline justify-between gap-3 no-underline">
+              <span>
+                <span class="display-tight text-lg font-medium text-ink group-hover:text-seal">abv-fail</span>
+                <span class="block text-[11px] text-ink-faint">48.5% vs 45.0% · cites 5.65(b)</span>
+              </span>
+              <span class="rubric text-verdict-fail">FAIL</span>
+            </a>
+          </li>
+          <li class="border-t border-rule pt-3">
+            <a href="/sample/warning-fail"
+               class="group flex items-baseline justify-between gap-3 no-underline">
+              <span>
+                <span class="display-tight text-lg font-medium text-ink group-hover:text-seal">warning-fail</span>
+                <span class="block text-[11px] text-ink-faint">Title-case warning · cites 16.22</span>
+              </span>
+              <span class="rubric text-verdict-fail">FAIL</span>
+            </a>
+          </li>
+        </ul>
       </div>
 
-      <!-- Beverage type -->
-      <div>
-        <label for="beverage_type" class="block text-sm font-medium text-slate-700">Beverage type</label>
-        <select name="beverage_type" id="beverage_type" required
-                x-model="fields.beverage_type"
-                @input="noteAgentTyped('beverage_type')"
-                :class="prefillClass('beverage_type', 'mt-2 block w-full rounded-md border bg-white px-3 py-2 text-sm')">
-          <option value="distilled_spirits">Distilled spirits (whiskey, vodka, gin&hellip;)</option>
-          <option value="wine">Wine</option>
-          <option value="malt_beverage">Malt beverage (beer, ale&hellip;)</option>
-          <option value="other">Other (hard seltzer, RTD, cider &ge;7%)</option>
-        </select>
+      <div class="mt-6 border border-rule bg-paper px-6 py-5">
+        <p class="rubric text-ink">Editor's note</p>
+        <p class="mt-3 text-[13px] leading-relaxed text-ink-muted">
+          The model's read of the label is a <em>suggestion</em>, not the truth. The COLA application
+          on file is the truth. The verifier compares the two; that's the design. Yellow-highlighted
+          fields are suggested values awaiting your confirmation.
+        </p>
       </div>
+    </aside>
+  </div>
 
-      <!-- Expected fields, two-column layout -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label for="brand_name" class="block text-sm font-medium text-slate-700">
-            Brand name <span x-show="prefilled.brand_name" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="text" name="brand_name" id="brand_name" required
-                 placeholder="Old Tom Distillery"
-                 x-model="fields.brand_name"
-                 @input="noteAgentTyped('brand_name')"
-                 :class="prefillClass('brand_name', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-        <div>
-          <label for="class_type" class="block text-sm font-medium text-slate-700">
-            Class / type <span x-show="prefilled.class_type" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="text" name="class_type" id="class_type"
-                 placeholder="Kentucky Straight Bourbon Whiskey"
-                 x-model="fields.class_type"
-                 @input="noteAgentTyped('class_type')"
-                 :class="prefillClass('class_type', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-        <div>
-          <label for="alcohol_content_pct" class="block text-sm font-medium text-slate-700">
-            Alcohol content (%) <span x-show="prefilled.alcohol_content_pct" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="number" step="0.1" min="0" max="100"
-                 name="alcohol_content_pct" id="alcohol_content_pct"
-                 placeholder="45.0"
-                 x-model="fields.alcohol_content_pct"
-                 @input="noteAgentTyped('alcohol_content_pct')"
-                 :class="prefillClass('alcohol_content_pct', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-        <div>
-          <label for="net_contents" class="block text-sm font-medium text-slate-700">
-            Net contents <span x-show="prefilled.net_contents" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="text" name="net_contents" id="net_contents" required
-                 placeholder="750 mL"
-                 x-model="fields.net_contents"
-                 @input="noteAgentTyped('net_contents')"
-                 :class="prefillClass('net_contents', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-        <div>
-          <label for="bottler_name" class="block text-sm font-medium text-slate-700">
-            Bottler name <span x-show="prefilled.bottler_name" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="text" name="bottler_name" id="bottler_name" required
-                 placeholder="Old Tom Distillery LLC"
-                 x-model="fields.bottler_name"
-                 @input="noteAgentTyped('bottler_name')"
-                 :class="prefillClass('bottler_name', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-        <div>
-          <label for="bottler_address" class="block text-sm font-medium text-slate-700">
-            Bottler address <span x-show="prefilled.bottler_address" class="text-amber-700 text-xs">(suggested — confirm vs application)</span>
-          </label>
-          <input type="text" name="bottler_address" id="bottler_address" required
-                 placeholder="123 Distillery Rd, Frankfort, KY"
-                 x-model="fields.bottler_address"
-                 @input="noteAgentTyped('bottler_address')"
-                 :class="prefillClass('bottler_address', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-      </div>
-
-      <!-- Import + country of origin -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div class="flex items-center gap-2 pt-6 sm:pt-0">
-          <input type="checkbox" name="is_import" id="is_import" value="true"
-                 x-model="fields.is_import"
-                 @change="noteAgentTyped('is_import'); noteAgentTyped('country_of_origin')"
-                 class="h-4 w-4 rounded border-slate-300 text-slate-800" />
-          <label for="is_import" class="text-sm font-medium text-slate-700">
-            This is an imported label
-            <span x-show="prefilled.is_import" class="ml-1 text-amber-700 text-xs">(suggested)</span>
-          </label>
-        </div>
-        <div>
-          <label for="country_of_origin" class="block text-sm font-medium text-slate-700">
-            Country of origin <span class="text-slate-400">(if import)</span>
-            <span x-show="prefilled.country_of_origin" class="text-amber-700 text-xs">(suggested)</span>
-          </label>
-          <input type="text" name="country_of_origin" id="country_of_origin"
-                 placeholder="Scotland"
-                 x-model="fields.country_of_origin"
-                 @input="noteAgentTyped('country_of_origin')"
-                 :class="prefillClass('country_of_origin', 'mt-2 block w-full rounded-md border px-3 py-2 text-sm')" />
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button type="submit"
-                class="min-h-11 rounded-md bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
-          Verify label
-        </button>
-        <span id="verify-spinner"
-              class="htmx-indicator inline-flex items-center gap-2 text-sm text-slate-600"
-              role="status"
-              aria-live="polite">
-          <svg class="h-4 w-4 animate-spin text-slate-700" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-          </svg>
-          Verifying label&hellip; (typically 2–5&nbsp;s with the configured model)
-        </span>
-      </div>
-    </form>
-  </section>
-
-  <section id="result-panel" class="mt-6" aria-live="polite"></section>
+  {# Where the HTMX verdict fragment lands. #}
+  <section id="result-panel" class="mt-12" aria-live="polite"></section>
 
   <script>
     // Alpine component for the verify form. State:
     //   fields           — bound to every input via x-model so we can prefill them
     //   prefilled        — object of {fieldName: true} for inputs the model
-    //                      suggested; the ring-amber styling + "(suggested)" label
+    //                      suggested; the ring-amber styling + "suggested · confirm"
     //                      key off this. Cleared on first edit so the agent's
     //                      confirmed value is visually distinct from the raw guess.
     //   extracting       — true while POST /extract is in flight
     //   elapsedSeconds   — wall-clock seconds since the extract call started,
-    //                      ticked once per second by an interval. Gives the agent
-    //                      a "still alive" signal when Gemini takes 7–9s.
+    //                      ticked once per second by an interval.
     //   prefillSummary   — small text below the file input listing what got
     //                      auto-filled (transparency about what the model did)
     //   prefillError     — actionable text if /extract fails (503, quota, etc.)
@@ -222,13 +302,9 @@
     //                            (the two-source comparison story: agent typing
     //                            is the COLA truth, not a draft to be replaced).
     //
-    // Design: the model's read is *only* a suggestion. The two-source
-    // comparison (label-extracted vs COLA-application) is what gives the
-    // verifier its meaning; the prefill removes typing, not the human
-    // judgment. Critically: /extract runs in the BACKGROUND — onPick fires
-    // the fetch without awaiting it so the agent can start typing
-    // immediately. Real Gemini latency is 7–9s; blocking the form on that
-    // would feel broken even though it's the spec'd 5s budget.
+    // /extract runs in the BACKGROUND — onPick fires the fetch without
+    // awaiting it so the agent can start typing immediately. Real Gemini
+    // latency is 7–9s in production.
     function verifyForm() {
       return {
         previewUrl: null,
@@ -255,15 +331,11 @@
           const file = e.target.files && e.target.files[0];
           this.previewUrl = file ? URL.createObjectURL(file) : null;
           if (!file) return;
-          // Fire extract in the background — DO NOT await. The agent can
-          // start typing immediately while Gemini works (typical 7–9s).
+          // Fire extract in the background — DO NOT await.
           this._agentTypedSinceUpload = {};
           this.extract(file);
         },
 
-        // Called from each input's @input handler. Records that the
-        // agent typed into this field so a late-arriving prefill never
-        // overwrites their work.
         noteAgentTyped (name) {
           this._agentTypedSinceUpload[name] = true;
           this.clearPrefill(name);
@@ -348,13 +420,14 @@
           }
         },
 
+        // Returns the field's class string. The amber/cream ring marks an
+        // un-confirmed model suggestion; the default state is a hairline
+        // underline that thickens to oxblood on focus (see base.html .field-input).
         prefillClass (name, base) {
-          // Default border vs the amber ring used when the field still
-          // carries an unmodified model suggestion.
           return base + ' ' + (
             this.prefilled[name]
-              ? 'border-amber-300 bg-amber-50 ring-1 ring-amber-300'
-              : 'border-slate-300'
+              ? 'border-amber-700/40 bg-amber-700/5 border-b-2'
+              : ''
           );
         },
       };

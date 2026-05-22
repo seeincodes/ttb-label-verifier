@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}TTB Label Verification{% endblock %}</title>
 
+    {# Editorial-regulatory typography stack:
+        Fraunces  — characterful variable serif for headlines + the verdict cartouche
+        IBM Plex  — federal-feeling sans for body + UI
+        JBM Mono  — tabular numerals for the per-field table + raw JSON #}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+
     <!-- HTMX 1.9.x — form-driven HTML-fragment swaps + SSE -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
@@ -12,28 +22,215 @@
     <!-- Alpine.js 3.x — dropzone, image preview, small toggles -->
     <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
-    <!-- Tailwind via Play CDN — prototype-only; production would use the CLI build -->
+    <!-- Tailwind via Play CDN with the editorial-regulatory theme inline. -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['"Fraunces"', 'Georgia', 'serif'],
+              sans:    ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+              mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            },
+            colors: {
+              paper:       '#F4EFE6',
+              'paper-inset':'#EEE7DA',
+              ink:         '#1A1614',
+              'ink-muted': '#5C544C',
+              'ink-faint': '#8C8478',
+              rule:        '#D8CFBE',
+              seal:        '#7A1F1F',
+              'verdict-pass':  '#1F5C3F',
+              'verdict-warn':  '#8C5A14',
+              'verdict-fail':  '#7A1F1F',
+              'verdict-error': '#3A352F',
+            },
+            letterSpacing: {
+              'rubric': '0.18em',
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      :root {
+        --paper: #F4EFE6;
+        --rule:  #D8CFBE;
+        --seal:  #7A1F1F;
+      }
+
+      /* Paper texture — subtle SVG noise overlay. Sits behind everything,
+         opacity tuned so it reads as texture, not pattern. */
+      body {
+        background-color: var(--paper);
+        background-image:
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0 0.05  0 0 0 0.035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        background-repeat: repeat;
+      }
+
+      /* Fraunces optical sizing — variable axes set for editorial headlines. */
+      .display {
+        font-family: 'Fraunces', Georgia, serif;
+        font-optical-sizing: auto;
+        font-variation-settings: 'opsz' 144, 'SOFT' 30;
+        font-feature-settings: 'ss01' 1, 'ss02' 1;
+        letter-spacing: -0.022em;
+      }
+
+      .display-tight { font-variation-settings: 'opsz' 96, 'SOFT' 20; letter-spacing: -0.018em; }
+
+      /* The "rubric" — small-caps metadata lines that flank section headlines. */
+      .rubric {
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 11px;
+      }
+
+      /* Form inputs get a typewriter / form-1040 underline, not a box border. */
+      .field-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 1px solid var(--rule);
+        border-radius: 0;
+        padding: 0.45rem 0.1rem;
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        font-size: 0.95rem;
+        color: #1A1614;
+        outline: none;
+        transition: border-bottom-color 120ms ease, padding-bottom 120ms ease;
+        width: 100%;
+      }
+      .field-input::placeholder {
+        color: #8C8478;
+        font-style: italic;
+      }
+      .field-input:focus {
+        border-bottom: 2px solid var(--seal);
+        padding-bottom: calc(0.45rem - 1px);
+      }
+      /* Select gets its own treatment — keep the affordance recognizable. */
+      .field-select {
+        appearance: none;
+        background-image:
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%231A1614' d='M0 0h12L6 8z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 0.25rem center;
+        padding-right: 1.5rem;
+      }
+
+      /* The "seal" button — primary CTA. Stamped, oxblood, all caps. */
+      .btn-seal {
+        background-color: var(--seal);
+        color: var(--paper);
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 0.78rem;
+        padding: 0.9rem 1.6rem;
+        border: none;
+        cursor: pointer;
+        transition: transform 100ms ease, box-shadow 200ms ease;
+        box-shadow: 0 1px 0 #5e1717, 0 4px 14px -6px rgba(122,31,31,0.35);
+      }
+      .btn-seal:hover { transform: translateY(-1px); box-shadow: 0 2px 0 #5e1717, 0 8px 18px -6px rgba(122,31,31,0.45); }
+      .btn-seal:active { transform: translateY(1px); box-shadow: 0 0 0 #5e1717, 0 2px 6px -3px rgba(122,31,31,0.35); }
+      .btn-seal:focus-visible { outline: 2px solid var(--seal); outline-offset: 3px; }
+
+      /* Hairline section divider with a centered seal mark. */
+      .hairline-with-seal {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #8C8478;
+      }
+      .hairline-with-seal::before,
+      .hairline-with-seal::after {
+        content: '';
+        flex: 1 1 0;
+        height: 1px;
+        background-color: var(--rule);
+      }
+
+      /* Tabular numerals everywhere — citations, ABV deltas, latencies. */
+      .tabular { font-variant-numeric: tabular-nums; }
+
+      /* Stagger-fade-in for the page-load reveal. Triggered by adding the
+         `.reveal-stack` class to a container; children animate sequentially. */
+      .reveal-stack > * {
+        opacity: 0;
+        transform: translateY(8px);
+        animation: revealFade 540ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .reveal-stack > *:nth-child(1) { animation-delay: 0ms; }
+      .reveal-stack > *:nth-child(2) { animation-delay: 60ms; }
+      .reveal-stack > *:nth-child(3) { animation-delay: 120ms; }
+      .reveal-stack > *:nth-child(4) { animation-delay: 180ms; }
+      .reveal-stack > *:nth-child(5) { animation-delay: 240ms; }
+      .reveal-stack > *:nth-child(6) { animation-delay: 300ms; }
+      .reveal-stack > *:nth-child(7) { animation-delay: 360ms; }
+      .reveal-stack > *:nth-child(8) { animation-delay: 420ms; }
+      @keyframes revealFade {
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* The verdict cartouche — stamped entrance. */
+      .cartouche-stamp {
+        animation: stamp 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      @keyframes stamp {
+        0%   { opacity: 0; transform: scale(0.92) rotate(-1.5deg); }
+        70%  { opacity: 1; transform: scale(1.02) rotate(-0.6deg); }
+        100% { opacity: 1; transform: scale(1) rotate(-0.6deg); }
+      }
+
+      /* Reduce motion if requested. */
+      @media (prefers-reduced-motion: reduce) {
+        .reveal-stack > * { opacity: 1; transform: none; animation: none; }
+        .cartouche-stamp { animation: none; }
+      }
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-900">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <a href="/" class="text-lg font-semibold tracking-tight">TTB Label Verification</a>
-        <nav class="flex items-center gap-4 text-sm text-slate-600">
-          <a href="/" class="hover:text-slate-900">Single label</a>
-          <a href="/batch" class="hover:text-slate-900">Batch</a>
-          <a href="/eval" class="hover:text-slate-900">Eval</a>
-          <a href="/health" class="hover:text-slate-900">Health</a>
-        </nav>
+  <body class="min-h-screen font-sans text-ink antialiased">
+    {# Header rendered as a masthead — newspaper convention. #}
+    <header class="border-b border-rule">
+      <div class="mx-auto max-w-6xl px-8 py-6">
+        <div class="flex items-baseline justify-between gap-6">
+          <a href="/" class="group flex items-baseline gap-3 no-underline">
+            <span class="rubric tabular text-seal">№ 27 CFR</span>
+            <span class="display text-2xl font-semibold tracking-tight text-ink group-hover:text-seal">
+              TTB Label Verification
+            </span>
+          </a>
+          <nav class="flex items-center gap-7 text-[13px] text-ink-muted">
+            <a href="/" class="hover:text-seal">Verify</a>
+            <a href="/batch" class="hover:text-seal">Batch</a>
+            <a href="/eval" class="hover:text-seal">Eval</a>
+            <a href="/health" class="hover:text-seal">Health</a>
+          </nav>
+        </div>
+        <p class="rubric mt-3 text-ink-faint">
+          Vol I&nbsp;·&nbsp;Prototype Edition&nbsp;·&nbsp;{{ 'Vision AI extraction + deterministic verifier' }}
+        </p>
       </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-6 py-8">
+    <main class="mx-auto max-w-6xl px-8 py-10">
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="mx-auto max-w-5xl px-6 py-6 text-xs text-slate-500">
-      Prototype — no data is persisted. Verdicts cite 27 CFR sections inline.
+    <footer class="mx-auto max-w-6xl border-t border-rule px-8 py-8">
+      <div class="flex flex-col items-start justify-between gap-3 text-[11px] uppercase tracking-rubric text-ink-faint sm:flex-row sm:items-center">
+        <span>
+          Prototype&nbsp;—&nbsp;no&nbsp;data&nbsp;is&nbsp;persisted.
+          Every&nbsp;verdict&nbsp;cites&nbsp;the&nbsp;27&nbsp;CFR&nbsp;section&nbsp;it&nbsp;depends&nbsp;on.
+        </span>
+        <span class="text-seal">§&nbsp;Verifier&nbsp;runs&nbsp;sub‑100&nbsp;ms&nbsp;·&nbsp;CFR&nbsp;table&nbsp;in&nbsp;README&nbsp;§6</span>
+      </div>
     </footer>
   </body>
 </html>
