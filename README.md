@@ -67,30 +67,45 @@ The samples are wired in [`app/main.py`](app/main.py) (`sample()` handler), the 
 
 ## §3 How to run
 
+> **Easier path if you just want to see it:** the deployed URL in [§2](#2-demo) is live and the three `/sample/{name}` routes need no API keys to demo the full result-panel flow. The instructions below are for running locally with your own Gemini / OpenAI keys.
+
+**Prerequisites:** macOS or Linux, Python ≥ 3.11 (pinned by `pyproject.toml`), `git`, `make`. No frontend build step — HTMX / Alpine / Tailwind are loaded from CDNs.
+
 ### Quick start (local)
 
 ```bash
-# 1. Clone, copy env template, fill in the two secrets.
-cp .env.example .env
-# Edit .env: set GEMINI_API_KEY (required) and OPENAI_API_KEY (required for fallback).
+# 1. Clone the repo and step in.
+git clone https://github.com/seeincodes/ttb-label-verifier.git
+cd ttb-label-verifier
 
-# 2. Install (creates .venv, installs requirements.txt).
+# 2. Copy the env template and fill in the secrets.
+cp .env.example .env
+# Edit .env: set GEMINI_API_KEY (required for the default extractor) and
+# OPENAI_API_KEY (required if EXTRACTOR_PROVIDER=openai or for automatic fallback).
+
+# 3. Install — creates .venv/ and installs requirements.txt.
 make install
 
-# 3. Run the FastAPI app with hot reload (default http://localhost:8000).
+# 4. Run the FastAPI app with hot reload (http://localhost:8000).
 make dev
-
-# 4. (Optional) Run the verifier unit tests.
-make test
-
-# 5. (Optional) Smoke-test the bare Gemini SDK against a synthetic image.
-make smoke-gemini
-
-# 6. (Optional) End-to-end smoke through the full GeminiExtractor (prompt + parse).
-make smoke-extractor
 ```
 
-The `Makefile` targets are thin wrappers (`Makefile:29-46`). `make eval` runs the eval harness against `eval/test_set/` once that group is built out; `make deploy` is a reminder that Render auto-deploys on push to `main`.
+Open <http://localhost:8000/> for the upload form, or jump straight to a no-API-call demo at <http://localhost:8000/sample/spirits-pass>.
+
+#### Other useful targets
+
+```bash
+make test             # Run the pytest suite (~338 tests, <5s).
+make eval             # Run the eval harness against eval/test_set/ (21 fixtures).
+                      # Writes a timestamped JSON into eval/results/ that the
+                      # in-app /eval dashboard then renders.
+make smoke-gemini     # Smoke-test the bare Gemini SDK against a synthetic image.
+make smoke-openai     # Same for the OpenAI SDK.
+make smoke-extractor  # End-to-end smoke through GeminiExtractor (prompt + parse + schema).
+make clean            # Remove .venv, .pytest_cache, __pycache__.
+```
+
+The `Makefile` targets are thin wrappers. `make deploy` is a reminder that Render auto-deploys on push to `main`.
 
 ### Environment variables
 
